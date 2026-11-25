@@ -15,6 +15,13 @@ from pathlib import Path
 
 import yaml
 
+class NoAliasDumper(yaml.SafeDumper):
+    def ignore_aliases(self, data):
+        return True
+
+def dump_yaml(data):
+    return yaml.dump(data,Dumper=NoAliasDumper,allow_unicode=True,sort_keys=False,width=110)
+
 SAP = '{http://www.successfactors.com/edm/sap}'
 M = '{http://schemas.microsoft.com/ado/2007/08/dataservices/metadata}'
 SCHEMA_URL = 'https://raw.githubusercontent.com/Kong/insomnia/develop/schemas/insomnia.schema.5.1.json'
@@ -283,7 +290,7 @@ def build(args):
     def collection(path,name,children,env=None):
         identity=path
         doc=dict(type='collection.insomnia.rest/5.0',schema_version='5.1',name=name,meta=dict(id=uid('wrk',identity),description='Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes antes de usar.'),collection=[auth_folder(identity)]+children,environments=dict(name='Base Environment',meta=dict(id=uid('env',identity)),data=dict(next_page_url='',**(env or {}))))
-        write(path,yaml.safe_dump(doc,allow_unicode=True,sort_keys=False,width=110))
+        write(path,dump_yaml(doc))
         def count(items): return sum(1 if 'method' in x else count(x.get('children',[])) for x in items)
         collections_out.append(dict(file=path,name=name,requests=count(doc['collection'])))
     read_groups=collections.defaultdict(list);write_groups=collections.defaultdict(list)
@@ -363,7 +370,7 @@ def build(args):
     write('catalog/functions.json',json.dumps(functions,indent=2,ensure_ascii=False)+'\n')
     write('environments/environment.example.json',json.dumps(env_template,indent=2)+'\n')
     global_environment=dict(type='environment.insomnia.rest/5.0',schema_version='5.1',name='SuccessFactors',meta=dict(id=uid('wrk','global-successfactors')),environments=dict(name='Base Environment',meta=dict(id=uid('env','global-successfactors')),data=env_template))
-    write('environments/SuccessFactors.yaml',yaml.safe_dump(global_environment,allow_unicode=True,sort_keys=False))
+    write('environments/SuccessFactors.yaml',dump_yaml(global_environment))
     index=out/'catalog/entities.csv'
     with index.open('w',encoding='utf-8',newline='') as handle:
         writer=csv.writer(handle);writer.writerow(['area','entity','keys','properties','relationships','create','update','upsert','delete'])

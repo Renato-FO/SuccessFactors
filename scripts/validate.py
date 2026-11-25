@@ -39,6 +39,7 @@ def validate():
             else: visit(n.get('children',[]),env)
     for p in files:
         text=p.read_text(encoding='utf-8')
+        assert not any(isinstance(token,(yaml.tokens.AnchorToken,yaml.tokens.AliasToken)) for token in yaml.scan(text)), 'YAML aliases are incompatible with strict Insomnia import limits: '+str(p)
         assert not forbidden.search(text), 'Instance-specific content: '+str(p.relative_to(ROOT))
         doc=yaml.safe_load(text)
         validator.validate(doc)

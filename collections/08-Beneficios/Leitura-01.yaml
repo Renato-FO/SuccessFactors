@@ -19,11 +19,11 @@ collection:
       description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
         a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
         global.
-    authentication: &id001
+    authentication:
       type: basic
       username: '{{ _.btp_client_id }}'
       password: '{{ _.btp_client_secret }}'
-    headers: &id002
+    headers:
     - name: Content-Type
       value: application/x-www-form-urlencoded
     parameters: []
@@ -39,7 +39,7 @@ collection:
         \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
         \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
         insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
-    body: &id003
+    body:
       mimeType: application/x-www-form-urlencoded
       params:
       - name: grant_type
@@ -51,8 +51,13 @@ collection:
     meta:
       id: req_997750c7326b1b7fdf2b35d887879d3b
       description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
-    authentication: *id001
-    headers: *id002
+    authentication:
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
     parameters: []
     scripts:
       afterResponse: 'const data = insomnia.response.json();
@@ -60,7 +65,12 @@ collection:
         if (!data.access_token) throw new Error(''Token ausente na resposta'');
 
         insomnia.globals.set(''btp_access_token'', data.access_token);'
-    body: *id003
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
   - name: 02 — Token SuccessFactors via Destination
     url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
     method: GET
@@ -137,8 +147,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id004
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -180,7 +189,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id004
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -204,7 +215,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id004
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitAutomaticActionConfiguration'
     method: GET
@@ -219,7 +232,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id004
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -263,7 +278,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitAutomaticActionConfiguration'
       method: GET
@@ -278,7 +295,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -302,7 +321,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitAutomaticActionConfiguration'
       method: GET
@@ -317,7 +338,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -345,8 +368,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id005
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -388,7 +410,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id005
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -411,7 +435,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id005
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitBalanceCarryForward'
     method: GET
@@ -426,7 +452,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id005
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -469,7 +497,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitBalanceCarryForward'
       method: GET
@@ -484,7 +514,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -507,7 +539,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitBalanceCarryForward'
       method: GET
@@ -522,7 +556,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -550,8 +586,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id006
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -593,7 +628,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id006
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -616,7 +653,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id006
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitBalanceCarryForwardDetail'
     method: GET
@@ -631,7 +670,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id006
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -674,7 +715,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitBalanceCarryForwardDetail'
       method: GET
@@ -689,7 +732,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -713,7 +758,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitBalanceCarryForwardDetail'
       method: GET
@@ -728,7 +775,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -752,7 +801,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — schedulePeriodNav
       url: '{{ _.base_url }}/odata/v2/BenefitBalanceCarryForwardDetail'
       method: GET
@@ -767,7 +818,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -794,8 +847,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id007
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -835,7 +887,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id007
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -857,7 +911,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id007
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitClaimAccumulation'
     method: GET
@@ -872,7 +928,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id007
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -913,7 +971,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -931,7 +991,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -953,7 +1015,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -971,7 +1035,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -993,7 +1059,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1011,7 +1079,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1033,7 +1103,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitClaimAccumulation'
       method: GET
@@ -1048,7 +1120,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1070,7 +1144,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1088,7 +1164,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1110,7 +1188,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — exceptionNav
       url: '{{ _.base_url }}/odata/v2/BenefitClaimAccumulation'
       method: GET
@@ -1125,7 +1205,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1147,7 +1229,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitClaimAccumulation'
       method: GET
@@ -1162,7 +1246,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1184,7 +1270,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — schedulePeriodNav
       url: '{{ _.base_url }}/odata/v2/BenefitClaimAccumulation'
       method: GET
@@ -1199,7 +1287,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1221,7 +1311,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1239,7 +1331,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1261,7 +1355,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — workerIdNav
       url: '{{ _.base_url }}/odata/v2/BenefitClaimAccumulation'
       method: GET
@@ -1276,7 +1372,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1304,8 +1402,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id008
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -1347,7 +1444,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id008
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1370,7 +1469,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id008
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitCompanyCar'
     method: GET
@@ -1385,7 +1486,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id008
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1428,7 +1531,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1446,7 +1551,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1469,7 +1576,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1487,7 +1596,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1510,7 +1621,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1528,7 +1641,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1551,7 +1666,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1569,7 +1686,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1592,7 +1711,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCar'
       method: GET
@@ -1607,7 +1728,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1630,7 +1753,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — emiCalculatorNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCar'
       method: GET
@@ -1645,7 +1770,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1668,7 +1795,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — installmentFrequencyNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCar'
       method: GET
@@ -1683,7 +1812,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1706,7 +1837,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCar'
       method: GET
@@ -1721,7 +1854,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1748,8 +1883,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id009
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -1790,7 +1924,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1812,7 +1948,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarAllowedModels'
     method: GET
@@ -1827,7 +1965,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1862,7 +2002,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1883,7 +2025,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1914,7 +2058,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarAllowedModels'
       method: GET
@@ -1929,7 +2075,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1952,7 +2100,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarAllowedModels'
       method: GET
@@ -1967,7 +2117,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1990,7 +2142,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -2008,7 +2162,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2035,8 +2191,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id010
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -2077,7 +2232,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id010
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2099,7 +2256,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id010
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarClaim'
     method: GET
@@ -2114,7 +2273,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id010
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2156,7 +2317,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -2174,7 +2337,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2197,7 +2362,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -2215,7 +2382,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2237,7 +2406,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarClaim'
       method: GET
@@ -2252,7 +2423,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2274,7 +2447,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -2292,7 +2467,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2314,7 +2491,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarClaim'
       method: GET
@@ -2329,7 +2508,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2352,7 +2533,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -2370,7 +2553,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2398,8 +2583,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id011
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -2441,7 +2625,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id011
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2464,7 +2650,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id011
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarEnrollment'
     method: GET
@@ -2479,7 +2667,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id011
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2522,7 +2712,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -2540,7 +2732,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2563,7 +2757,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -2581,7 +2777,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2604,7 +2802,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -2622,7 +2822,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2645,7 +2847,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarEnrollment'
       method: GET
@@ -2660,7 +2864,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2683,7 +2889,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -2701,7 +2909,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2724,7 +2934,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — emiCalculatorNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarEnrollment'
       method: GET
@@ -2739,7 +2951,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2762,7 +2976,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — installmentFrequencyNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarEnrollment'
       method: GET
@@ -2777,7 +2993,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2800,7 +3018,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarEnrollment'
       method: GET
@@ -2815,7 +3035,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2842,8 +3064,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id012
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -2884,7 +3105,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id012
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2907,7 +3130,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id012
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarLeaseServiceProvider'
     method: GET
@@ -2922,7 +3147,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id012
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2957,7 +3184,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id012
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2978,7 +3207,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id012
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -3010,7 +3241,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarLeaseServiceProvider'
       method: GET
@@ -3025,7 +3258,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3049,7 +3284,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarLeaseServiceProvider'
       method: GET
@@ -3064,7 +3301,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3088,7 +3327,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -3106,7 +3347,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3133,8 +3376,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id013
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -3175,7 +3417,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id013
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -3198,7 +3442,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id013
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarRecommendedVendors'
     method: GET
@@ -3213,7 +3459,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id013
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -3248,7 +3496,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id013
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -3269,7 +3519,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id013
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -3301,7 +3553,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id013
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarRecommendedVendors'
       method: GET
@@ -3316,7 +3570,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id013
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3340,7 +3596,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id013
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyCarRecommendedVendors'
       method: GET
@@ -3355,7 +3613,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id013
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3379,7 +3639,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id013
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -3397,7 +3659,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id013
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3425,8 +3689,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id014
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -3468,7 +3731,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id014
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -3491,7 +3756,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id014
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitCompanyHousing'
     method: GET
@@ -3506,7 +3773,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id014
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -3549,7 +3818,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id014
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -3567,7 +3838,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id014
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3590,7 +3863,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id014
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -3608,7 +3883,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id014
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3631,7 +3908,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id014
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyHousing'
       method: GET
@@ -3646,7 +3925,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id014
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3669,7 +3950,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id014
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyHousing'
       method: GET
@@ -3684,7 +3967,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id014
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3712,8 +3997,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id015
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -3755,7 +4039,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id015
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -3778,7 +4064,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id015
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitCompanyHousingEnrollment'
     method: GET
@@ -3793,7 +4081,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id015
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -3836,7 +4126,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id015
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -3854,7 +4146,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id015
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3877,7 +4171,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id015
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -3895,7 +4191,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id015
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3918,7 +4216,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id015
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyHousingEnrollment'
       method: GET
@@ -3933,7 +4233,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id015
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3956,7 +4258,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id015
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitCompanyHousingEnrollment'
       method: GET
@@ -3971,7 +4275,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id015
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3994,7 +4300,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id015
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -4012,7 +4320,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id015
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4039,8 +4349,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id016
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -4080,7 +4389,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id016
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4102,7 +4413,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id016
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitContact'
     method: GET
@@ -4117,7 +4430,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id016
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4158,7 +4473,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id016
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — contactEmployeeIdNav
       url: '{{ _.base_url }}/odata/v2/BenefitContact'
       method: GET
@@ -4173,7 +4490,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id016
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4195,7 +4514,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id016
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -4213,7 +4534,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id016
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4235,7 +4558,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id016
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitContact'
       method: GET
@@ -4250,7 +4575,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id016
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4272,7 +4599,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id016
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitContact'
       method: GET
@@ -4287,7 +4616,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id016
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4309,7 +4640,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id016
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -4327,7 +4660,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id016
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4355,8 +4690,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id017
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -4398,7 +4732,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id017
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4422,7 +4758,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id017
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitDeductibleAllowanceEnrollment'
     method: GET
@@ -4437,7 +4775,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id017
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4481,7 +4821,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id017
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitDeductibleAllowanceEnrollment'
       method: GET
@@ -4496,7 +4838,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id017
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4520,7 +4864,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id017
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -4538,7 +4884,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id017
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4562,7 +4910,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id017
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -4580,7 +4930,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id017
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4604,7 +4956,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id017
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitDeductibleAllowanceEnrollment'
       method: GET
@@ -4619,7 +4973,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id017
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4646,8 +5002,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id018
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -4688,7 +5043,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id018
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4710,7 +5067,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id018
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitDependentDetail'
     method: GET
@@ -4725,7 +5084,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id018
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4767,7 +5128,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id018
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitDependentDetail'
       method: GET
@@ -4782,7 +5145,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id018
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4805,7 +5170,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id018
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitDependentDetail'
       method: GET
@@ -4820,7 +5187,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id018
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4843,7 +5212,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id018
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -4861,7 +5232,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id018
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4888,8 +5261,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id019
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -4930,7 +5302,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id019
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4952,7 +5326,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id019
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitDocuments'
     method: GET
@@ -4967,7 +5343,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id019
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -5002,7 +5380,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id019
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -5023,7 +5403,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id019
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -5053,7 +5435,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id019
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — attachmentNav
       url: '{{ _.base_url }}/odata/v2/BenefitDocuments'
       method: GET
@@ -5068,7 +5452,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id019
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5090,7 +5476,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id019
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitDocuments'
       method: GET
@@ -5105,7 +5493,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id019
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5127,7 +5517,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id019
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitDocuments'
       method: GET
@@ -5142,7 +5534,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id019
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5164,7 +5558,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id019
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -5182,7 +5578,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id019
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5210,8 +5608,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id020
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -5253,7 +5650,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id020
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -5277,7 +5676,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id020
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEffectiveDateConfiguration'
     method: GET
@@ -5292,7 +5693,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id020
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -5336,7 +5739,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id020
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEffectiveDateConfiguration'
       method: GET
@@ -5351,7 +5756,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id020
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5375,7 +5782,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id020
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEffectiveDateConfiguration'
       method: GET
@@ -5390,7 +5799,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id020
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5417,8 +5828,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id021
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -5459,7 +5869,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id021
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -5481,7 +5893,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id021
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEligibleUser'
     method: GET
@@ -5496,7 +5910,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id021
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -5531,7 +5947,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id021
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -5552,7 +5970,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id021
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -5583,7 +6003,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEligibleUser'
       method: GET
@@ -5598,7 +6020,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5621,7 +6045,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — currencyNav
       url: '{{ _.base_url }}/odata/v2/BenefitEligibleUser'
       method: GET
@@ -5636,7 +6062,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5659,7 +6087,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEligibleUser'
       method: GET
@@ -5674,7 +6104,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5697,7 +6129,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — legalEntityNav
       url: '{{ _.base_url }}/odata/v2/BenefitEligibleUser'
       method: GET
@@ -5712,7 +6146,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5735,7 +6171,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -5753,7 +6191,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5776,7 +6216,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — workerIdNav
       url: '{{ _.base_url }}/odata/v2/BenefitEligibleUser'
       method: GET
@@ -5791,7 +6233,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id021
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5818,8 +6262,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id022
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -5859,7 +6302,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id022
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -5881,7 +6326,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id022
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaim'
     method: GET
@@ -5896,7 +6343,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id022
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -5937,7 +6386,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — attachmentNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaim'
       method: GET
@@ -5952,7 +6403,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -5974,7 +6427,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benFuelReimbursement
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaim'
       method: GET
@@ -5989,7 +6444,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6011,7 +6468,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benTravelReimbursementClaim
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaim'
       method: GET
@@ -6026,7 +6485,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6048,7 +6509,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -6066,7 +6529,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6088,7 +6553,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -6106,7 +6573,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6128,7 +6597,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benefitEmployeeCarClaim
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaim'
       method: GET
@@ -6143,7 +6614,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6165,7 +6638,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -6183,7 +6658,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6205,7 +6682,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -6223,7 +6702,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6245,7 +6726,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -6263,7 +6746,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6285,7 +6770,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaim'
       method: GET
@@ -6300,7 +6787,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6322,7 +6811,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -6340,7 +6831,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6362,7 +6855,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — exceptionNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaim'
       method: GET
@@ -6377,7 +6872,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6399,7 +6896,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -6417,7 +6916,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6439,7 +6940,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaim'
       method: GET
@@ -6454,7 +6957,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6476,7 +6981,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -6494,7 +7001,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6516,7 +7025,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -6534,7 +7045,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6556,7 +7069,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -6574,7 +7089,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6596,7 +7113,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — workerIdNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaim'
       method: GET
@@ -6611,7 +7130,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id022
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6638,8 +7159,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id023
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -6680,7 +7200,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id023
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -6702,7 +7224,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id023
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaimDetail'
     method: GET
@@ -6717,7 +7241,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id023
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -6759,7 +7285,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id023
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — attachmentNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaimDetail'
       method: GET
@@ -6774,7 +7302,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id023
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6796,7 +7326,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id023
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaimDetail'
       method: GET
@@ -6811,7 +7343,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id023
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6833,7 +7367,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id023
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -6851,7 +7387,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id023
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6873,7 +7411,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id023
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeClaimDetail'
       method: GET
@@ -6888,7 +7428,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id023
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -6915,8 +7457,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id024
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -6956,7 +7497,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id024
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -6979,7 +7522,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id024
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEmployeeLifeEventDeclarationForm'
     method: GET
@@ -6994,7 +7539,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id024
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -7036,7 +7583,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id024
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — attachmentNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeLifeEventDeclarationForm'
       method: GET
@@ -7051,7 +7600,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id024
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7074,7 +7625,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id024
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeLifeEventDeclarationForm'
       method: GET
@@ -7089,7 +7642,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id024
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7112,7 +7667,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id024
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeLifeEventDeclarationForm'
       method: GET
@@ -7127,7 +7684,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id024
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7150,7 +7709,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id024
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -7168,7 +7729,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id024
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7191,7 +7754,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id024
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — workerIdNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeLifeEventDeclarationForm'
       method: GET
@@ -7206,7 +7771,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id024
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7233,8 +7800,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id025
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -7274,7 +7840,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id025
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -7296,7 +7864,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id025
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEmployeeOptoutRequests'
     method: GET
@@ -7311,7 +7881,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id025
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -7352,7 +7924,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id025
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -7370,7 +7944,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id025
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7392,7 +7968,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id025
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeOptoutRequests'
       method: GET
@@ -7407,7 +7985,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id025
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7429,7 +8009,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id025
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeOptoutRequests'
       method: GET
@@ -7444,7 +8026,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id025
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7466,7 +8050,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id025
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -7484,7 +8070,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id025
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7506,7 +8094,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id025
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — workerIdNav
       url: '{{ _.base_url }}/odata/v2/BenefitEmployeeOptoutRequests'
       method: GET
@@ -7521,7 +8111,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id025
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7548,8 +8140,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id026
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -7590,7 +8181,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id026
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -7612,7 +8205,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id026
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
     method: GET
@@ -7627,7 +8222,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id026
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -7662,7 +8259,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id026
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -7683,7 +8282,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id026
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -7713,7 +8314,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — attachmentNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -7728,7 +8331,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7751,7 +8356,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benefitCompanyCarEnrollment
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -7766,7 +8373,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7789,7 +8398,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benefitCompanyHousingEnrollment
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -7804,7 +8415,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7826,7 +8439,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -7844,7 +8459,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7867,7 +8484,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benefitDeductibleAllowanceEnrollment
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -7882,7 +8501,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7905,7 +8526,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benefitInsurancePlanEnrollmentDetails
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -7920,7 +8543,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7943,7 +8568,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benefitPaymentOptionNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -7958,7 +8585,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -7981,7 +8610,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -7999,7 +8630,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8022,7 +8655,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benefitPensionEnrollmentContributionDetail
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -8037,7 +8672,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8060,7 +8697,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -8078,7 +8717,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8101,7 +8742,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -8119,7 +8762,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8141,7 +8786,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benefitProgramNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -8156,7 +8803,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8179,7 +8828,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -8197,7 +8848,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8220,7 +8873,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -8238,7 +8893,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8261,7 +8918,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benefitSavingsPlanEnrollmentDetails
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -8276,7 +8935,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8299,7 +8960,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -8317,7 +8980,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8339,7 +9004,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -8354,7 +9021,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8376,7 +9045,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — currencyNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -8391,7 +9062,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8413,7 +9086,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — exceptionNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -8428,7 +9103,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8450,7 +9127,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -8468,7 +9147,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8490,7 +9171,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -8505,7 +9188,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8527,7 +9212,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -8545,7 +9232,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8568,7 +9257,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — schedulePeriodNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -8583,7 +9274,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8605,7 +9298,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -8623,7 +9318,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8645,7 +9342,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -8663,7 +9362,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8685,7 +9386,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — workerIdNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollment'
       method: GET
@@ -8700,7 +9403,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id026
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8728,8 +9433,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id027
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -8771,7 +9475,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id027
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -8795,7 +9501,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id027
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentDependencyConfiguration'
     method: GET
@@ -8810,7 +9518,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id027
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -8845,7 +9555,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id027
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -8866,7 +9578,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id027
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -8898,7 +9612,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id027
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -8916,7 +9632,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id027
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8940,7 +9658,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id027
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentDependencyConfiguration'
       method: GET
@@ -8955,7 +9675,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id027
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -8979,7 +9701,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id027
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentDependencyConfiguration'
       method: GET
@@ -8994,7 +9718,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id027
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9018,7 +9744,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id027
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -9036,7 +9764,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id027
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9064,8 +9794,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id028
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -9108,7 +9837,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id028
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -9132,7 +9863,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id028
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentDependencyDetails'
     method: GET
@@ -9147,7 +9880,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id028
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -9192,7 +9927,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id028
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentDependencyDetails'
       method: GET
@@ -9207,7 +9944,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id028
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9232,7 +9971,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id028
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -9250,7 +9991,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id028
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9275,7 +10018,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id028
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentDependencyDetails'
       method: GET
@@ -9290,7 +10035,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id028
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9315,7 +10062,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id028
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -9333,7 +10082,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id028
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9360,8 +10111,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id029
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -9402,7 +10152,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id029
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -9424,7 +10176,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id029
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentGroup'
     method: GET
@@ -9439,7 +10193,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id029
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -9474,7 +10230,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id029
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -9495,7 +10253,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id029
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -9526,7 +10286,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -9544,7 +10306,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9566,7 +10330,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentGroup'
       method: GET
@@ -9581,7 +10347,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9603,7 +10371,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentGroup'
       method: GET
@@ -9618,7 +10388,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9641,7 +10413,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — openEnrollmentConfigNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentGroup'
       method: GET
@@ -9656,7 +10430,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9679,7 +10455,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — openEnrollmentProcessConfigNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentGroup'
       method: GET
@@ -9694,7 +10472,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9717,7 +10497,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — schedulePeriodNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentGroup'
       method: GET
@@ -9732,7 +10514,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9754,7 +10538,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -9772,7 +10558,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9794,7 +10582,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — workerIdNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentGroup'
       method: GET
@@ -9809,7 +10599,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id029
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -9837,8 +10629,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id030
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -9880,7 +10671,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id030
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -9903,7 +10696,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id030
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentOptoutDetails'
     method: GET
@@ -9918,7 +10713,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id030
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -9960,7 +10757,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id030
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -9978,7 +10777,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id030
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10001,7 +10802,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id030
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — benefitSchedulePeriodNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentOptoutDetails'
       method: GET
@@ -10016,7 +10819,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id030
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10039,7 +10844,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id030
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentOptoutDetails'
       method: GET
@@ -10054,7 +10861,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id030
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10077,7 +10886,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id030
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentOptoutDetails'
       method: GET
@@ -10092,7 +10903,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id030
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10119,8 +10932,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id031
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -10161,7 +10973,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id031
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -10184,7 +10998,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id031
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentProcessConfiguration'
     method: GET
@@ -10199,7 +11015,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id031
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -10242,7 +11060,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentProcessConfiguration'
       method: GET
@@ -10257,7 +11077,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10281,7 +11103,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — currencyNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentProcessConfiguration'
       method: GET
@@ -10296,7 +11120,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10320,7 +11146,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentProcessConfiguration'
       method: GET
@@ -10335,7 +11163,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10359,7 +11189,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -10377,7 +11209,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10401,7 +11235,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — offcycleEnrollmentScreenConfigurationNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentProcessConfiguration'
       method: GET
@@ -10416,7 +11252,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10440,7 +11278,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — openEnrollmentScheduleNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentProcessConfiguration'
       method: GET
@@ -10455,7 +11295,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10479,7 +11321,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — regularEnrollmentScreenConfigurationNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentProcessConfiguration'
       method: GET
@@ -10494,7 +11338,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10518,7 +11364,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -10536,7 +11384,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10560,7 +11410,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — workflowNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentProcessConfiguration'
       method: GET
@@ -10575,7 +11427,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id031
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10602,8 +11456,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id032
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -10644,7 +11497,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id032
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -10667,7 +11522,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id032
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentProcessScreenTemplate'
     method: GET
@@ -10682,7 +11539,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id032
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -10725,7 +11584,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id032
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentProcessScreenTemplate'
       method: GET
@@ -10740,7 +11601,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id032
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10764,7 +11627,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id032
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEnrollmentProcessScreenTemplate'
       method: GET
@@ -10779,7 +11644,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id032
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10803,7 +11670,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id032
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -10821,7 +11690,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id032
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -10848,8 +11719,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id033
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -10889,7 +11759,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id033
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -10911,7 +11783,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id033
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEvent'
     method: GET
@@ -10926,7 +11800,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id033
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -10961,7 +11837,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id033
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -10982,7 +11860,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id033
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -11012,7 +11892,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id033
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEvent'
       method: GET
@@ -11027,7 +11909,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id033
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11049,7 +11933,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id033
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEvent'
       method: GET
@@ -11064,7 +11950,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id033
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11086,7 +11974,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id033
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -11104,7 +11994,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id033
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11131,8 +12023,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id034
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -11172,7 +12063,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id034
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -11194,7 +12087,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id034
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEventDetermination'
     method: GET
@@ -11209,7 +12104,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id034
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -11250,7 +12147,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id034
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEventDetermination'
       method: GET
@@ -11265,7 +12164,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id034
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11287,7 +12188,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id034
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEventDetermination'
       method: GET
@@ -11302,7 +12205,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id034
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11324,7 +12229,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id034
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -11342,7 +12249,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id034
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11369,8 +12278,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id035
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -11410,7 +12318,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id035
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -11432,7 +12342,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id035
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitEventProcessingLog'
     method: GET
@@ -11447,7 +12359,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id035
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -11488,7 +12402,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -11506,7 +12422,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11528,7 +12446,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -11546,7 +12466,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11568,7 +12490,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEventProcessingLog'
       method: GET
@@ -11583,7 +12507,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11605,7 +12531,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — eventPublishedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEventProcessingLog'
       method: GET
@@ -11620,7 +12548,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11642,7 +12572,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEventProcessingLog'
       method: GET
@@ -11657,7 +12589,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11679,7 +12613,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — reprocessRequestedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitEventProcessingLog'
       method: GET
@@ -11694,7 +12630,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11716,7 +12654,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -11734,7 +12674,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11756,7 +12698,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — workerIdNav
       url: '{{ _.base_url }}/odata/v2/BenefitEventProcessingLog'
       method: GET
@@ -11771,7 +12715,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id035
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11798,8 +12744,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id036
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -11840,7 +12785,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id036
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -11862,7 +12809,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id036
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitExceptionDetails'
     method: GET
@@ -11877,7 +12826,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id036
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -11919,7 +12870,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id036
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitExceptionDetails'
       method: GET
@@ -11934,7 +12887,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id036
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11957,7 +12912,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id036
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitExceptionDetails'
       method: GET
@@ -11972,7 +12929,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id036
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -11995,7 +12954,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id036
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — schedulePeriodNav
       url: '{{ _.base_url }}/odata/v2/BenefitExceptionDetails'
       method: GET
@@ -12010,7 +12971,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id036
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -12037,8 +13000,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id037
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -12079,7 +13041,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id037
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -12101,7 +13065,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id037
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitFuelReimbursement'
     method: GET
@@ -12116,7 +13082,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id037
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -12158,7 +13126,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id037
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitFuelReimbursement'
       method: GET
@@ -12173,7 +13143,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id037
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -12196,7 +13168,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id037
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitFuelReimbursement'
       method: GET
@@ -12211,7 +13185,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id037
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -12238,8 +13214,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id038
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -12280,7 +13255,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id038
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -12303,7 +13280,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id038
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/BenefitFuelReimbursementClaimDetail'
     method: GET
@@ -12318,7 +13297,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id038
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -12361,7 +13342,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id038
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — attachmentNav
       url: '{{ _.base_url }}/odata/v2/BenefitFuelReimbursementClaimDetail'
       method: GET
@@ -12376,7 +13359,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id038
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -12400,7 +13385,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id038
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/BenefitFuelReimbursementClaimDetail'
       method: GET
@@ -12415,7 +13402,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id038
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -12439,7 +13428,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id038
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/BenefitFuelReimbursementClaimDetail'
       method: GET
@@ -12454,7 +13445,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id038
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false

@@ -19,11 +19,11 @@ collection:
       description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
         a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
         global.
-    authentication: &id001
+    authentication:
       type: basic
       username: '{{ _.btp_client_id }}'
       password: '{{ _.btp_client_secret }}'
-    headers: &id002
+    headers:
     - name: Content-Type
       value: application/x-www-form-urlencoded
     parameters: []
@@ -39,7 +39,7 @@ collection:
         \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
         \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
         insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
-    body: &id003
+    body:
       mimeType: application/x-www-form-urlencoded
       params:
       - name: grant_type
@@ -51,8 +51,13 @@ collection:
     meta:
       id: req_edf41c3d5d5e50a704e4d45b97768da1
       description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
-    authentication: *id001
-    headers: *id002
+    authentication:
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
     parameters: []
     scripts:
       afterResponse: 'const data = insomnia.response.json();
@@ -60,7 +65,12 @@ collection:
         if (!data.access_token) throw new Error(''Token ausente na resposta'');
 
         insomnia.globals.set(''btp_access_token'', data.access_token);'
-    body: *id003
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
   - name: 02 — Token SuccessFactors via Destination
     url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
     method: GET
@@ -136,8 +146,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id004
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -177,7 +186,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id004
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -199,7 +210,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id004
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/FOWfConfig'
     method: GET
@@ -214,7 +227,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id004
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -255,7 +270,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — futureDatedAlternateWorkflowNav
       url: '{{ _.base_url }}/odata/v2/FOWfConfig'
       method: GET
@@ -270,7 +287,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -292,7 +311,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -310,7 +331,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -337,8 +360,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id005
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -379,7 +401,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id005
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -401,7 +425,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id005
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover'
     method: GET
@@ -416,7 +442,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id005
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -457,7 +485,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -475,7 +505,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -497,7 +529,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — approverGroupNav
       url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover'
       method: GET
@@ -512,7 +546,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -534,7 +570,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — approverJobRelationshipNav
       url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover'
       method: GET
@@ -549,7 +587,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -571,7 +611,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -589,7 +631,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -616,8 +660,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id006
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -657,7 +700,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id006
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -679,7 +724,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id006
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/WfRequest'
     method: GET
@@ -694,7 +741,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id006
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -735,7 +784,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — parentWfRequestNav
       url: '{{ _.base_url }}/odata/v2/WfRequest'
       method: GET
@@ -750,7 +801,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -772,7 +825,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -790,7 +845,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -812,7 +869,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -830,7 +889,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -852,7 +913,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -870,7 +933,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -892,7 +957,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -910,7 +977,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -937,8 +1006,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id007
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -978,7 +1046,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id007
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1000,7 +1070,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id007
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/WfRequestComments'
     method: GET
@@ -1015,7 +1087,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id007
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1056,7 +1130,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — userNav
       url: '{{ _.base_url }}/odata/v2/WfRequestComments'
       method: GET
@@ -1071,7 +1147,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1098,8 +1176,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id008
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -1139,7 +1216,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id008
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1161,7 +1240,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id008
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/WfRequestParticipator'
     method: GET
@@ -1176,7 +1257,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id008
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1217,7 +1300,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — dynamicGroupNav
       url: '{{ _.base_url }}/odata/v2/WfRequestParticipator'
       method: GET
@@ -1232,7 +1317,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1254,7 +1341,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — dynamicRoleNav
       url: '{{ _.base_url }}/odata/v2/WfRequestParticipator'
       method: GET
@@ -1269,7 +1358,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1291,7 +1382,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — ownerNav
       url: '{{ _.base_url }}/odata/v2/WfRequestParticipator'
       method: GET
@@ -1306,7 +1399,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1328,7 +1423,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1346,7 +1443,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1373,8 +1472,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id009
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -1414,7 +1512,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1436,7 +1536,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/WfRequestStep'
     method: GET
@@ -1451,7 +1553,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1492,7 +1596,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — dynamicRoleNav
       url: '{{ _.base_url }}/odata/v2/WfRequestStep'
       method: GET
@@ -1507,7 +1613,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1529,7 +1637,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — jobRelationshipTypeNav
       url: '{{ _.base_url }}/odata/v2/WfRequestStep'
       method: GET
@@ -1544,7 +1654,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1566,7 +1678,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — ownerNav
       url: '{{ _.base_url }}/odata/v2/WfRequestStep'
       method: GET
@@ -1581,7 +1695,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1603,7 +1719,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1621,7 +1739,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1643,7 +1763,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — processedByNav
       url: '{{ _.base_url }}/odata/v2/WfRequestStep'
       method: GET
@@ -1658,7 +1780,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1680,7 +1804,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — wfRequestNav
       url: '{{ _.base_url }}/odata/v2/WfRequestStep'
       method: GET
@@ -1695,7 +1821,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1722,8 +1850,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id010
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -1763,7 +1890,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id010
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1785,7 +1914,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id010
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/WorkflowAllowedActionList'
     method: GET
@@ -1800,7 +1931,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id010
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false

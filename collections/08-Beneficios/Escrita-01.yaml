@@ -19,11 +19,11 @@ collection:
       description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
         a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
         global.
-    authentication: &id001
+    authentication:
       type: basic
       username: '{{ _.btp_client_id }}'
       password: '{{ _.btp_client_secret }}'
-    headers: &id002
+    headers:
     - name: Content-Type
       value: application/x-www-form-urlencoded
     parameters: []
@@ -39,7 +39,7 @@ collection:
         \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
         \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
         insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
-    body: &id003
+    body:
       mimeType: application/x-www-form-urlencoded
       params:
       - name: grant_type
@@ -51,8 +51,13 @@ collection:
     meta:
       id: req_3839514bfe12dfa243843fe5a77af7b4
       description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
-    authentication: *id001
-    headers: *id002
+    authentication:
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
     parameters: []
     scripts:
       afterResponse: 'const data = insomnia.response.json();
@@ -60,7 +65,12 @@ collection:
         if (!data.access_token) throw new Error(''Token ausente na resposta'');
 
         insomnia.globals.set(''btp_access_token'', data.access_token);'
-    body: *id003
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
   - name: 02 — Token SuccessFactors via Destination
     url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
     method: GET
@@ -138,7 +148,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id004
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -163,7 +173,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id004
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"employeeLifeEventId\": \"REPLACE_ME\",\n  \"lifeEventDate\": \"/Date(946684800000)/\"\n}"
@@ -184,7 +197,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id004
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitEmployeeLifeEventDeclarationForm\"\n    },\n\
@@ -229,7 +245,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id005
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -256,7 +272,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id005
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"benefitDependencyId\": \"REPLACE_ME\",\n  \"effectiveStartDate\": \"/Date(946684800000)/\"\n\
@@ -279,7 +298,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id005
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitEnrollmentDependencyConfiguration\"\n    },\n\
@@ -325,7 +347,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id006
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -352,7 +374,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id006
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"BenefitEnrollmentDependencyConfiguration_benefitDependencyId\": \"REPLACE_ME\",\n  \"BenefitEnrollmentDependencyConfiguration_effectiveStartDate\"\
@@ -375,7 +400,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id006
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitEnrollmentDependencyDetails\"\n    },\n    \"\
@@ -423,7 +451,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id007
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -449,7 +477,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id007
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"Benefit_benefitId\": \"REPLACE_ME\",\n  \"Benefit_effectiveStartDate\": \"/Date(946684800000)/\"\
@@ -472,7 +503,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id007
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitHyperlinkConfiguration\"\n    },\n    \"Benefit_benefitId\"\
@@ -516,7 +550,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id008
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -541,7 +575,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id008
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"coverageId\": \"REPLACE_ME\",\n  \"amount\": \"0\",\n  \"coverageType\": \"REPLACE_ME\",\n \
@@ -563,7 +600,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id008
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsuranceCoverage\"\n    },\n    \"coverageId\"\
@@ -607,7 +647,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id009
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -634,7 +674,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id009
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"BenefitInsuranceCoverageOptions_externalCode\": \"REPLACE_ME\",\n  \"BenefitInsurancePlan_effectiveStartDate\"\
@@ -658,7 +701,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id009
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsuranceCoverageDetails\"\n    },\n    \"BenefitInsuranceCoverageOptions_externalCode\"\
@@ -704,7 +750,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id010
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -730,7 +776,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id010
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"BenefitInsurancePlan_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"BenefitInsurancePlan_id\"\
@@ -753,7 +802,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id010
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsuranceCoverageOptions\"\n    },\n    \"BenefitInsurancePlan_effectiveStartDate\"\
@@ -797,7 +849,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id011
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -821,7 +873,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id011
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"id\": \"REPLACE_ME\",\n  \"enrolleeOptionsName\": \"REPLACE_ME\"\n}"
@@ -842,7 +897,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id011
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsuranceEnrolleeOptions\"\n    },\n    \"id\"\
@@ -884,7 +942,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id012
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -908,7 +966,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id012
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"relationShipType\": \"REPLACE_ME\"\n}"
@@ -929,7 +990,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id012
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsuranceEnrolleeType\"\n    },\n    \"effectiveStartDate\"\
@@ -972,7 +1036,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id013
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -997,7 +1061,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id013
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"id\": \"REPLACE_ME\",\n  \"ageBasedRateCalculationType\"\
@@ -1019,7 +1086,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id013
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsurancePlan\"\n    },\n    \"effectiveStartDate\"\
@@ -1064,7 +1134,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id014
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1090,7 +1160,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id014
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"BenefitInsurancePlan_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"BenefitInsurancePlan_id\"\
@@ -1113,7 +1186,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id014
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsurancePlanUK\"\n    },\n    \"BenefitInsurancePlan_effectiveStartDate\"\
@@ -1158,7 +1234,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id015
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1185,7 +1261,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id015
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"BenefitInsurancePlan_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"BenefitInsurancePlan_id\"\
@@ -1209,7 +1288,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id015
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsurancePlanUSA\"\n    },\n    \"BenefitInsurancePlan_effectiveStartDate\"\
@@ -1254,7 +1336,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id016
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1278,7 +1360,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id016
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"providerId\": \"REPLACE_ME\",\n  \"providerName\": \"REPLACE_ME\"\n}"
@@ -1299,7 +1384,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id016
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsuranceProvider\"\n    },\n    \"providerId\"\
@@ -1341,7 +1429,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id017
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1366,7 +1454,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id017
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"rateChartId\": \"REPLACE_ME\",\n  \"factor\"\
@@ -1388,7 +1479,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id017
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsuranceRateChart\"\n    },\n    \"effectiveStartDate\"\
@@ -1432,7 +1526,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id018
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1459,7 +1553,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id018
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"BenefitInsuranceRateChart_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"BenefitInsuranceRateChart_rateChartId\"\
@@ -1482,7 +1579,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id018
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsuranceRateChartEnrollee\"\n    },\n    \"\
@@ -1530,7 +1630,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id019
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1558,7 +1658,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id019
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"BenefitInsuranceRateChart_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"BenefitInsuranceRateChart_rateChartId\"\
@@ -1582,7 +1685,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id019
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitInsuranceRateChartFixedAmount\"\n    },\n  \
@@ -1629,7 +1735,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id020
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1653,7 +1759,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id020
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"company\": \"REPLACE_ME\"\n}"
@@ -1674,7 +1783,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id020
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitLegalEntity\"\n    },\n    \"company\": \"REPLACE_ME\"\
@@ -1716,7 +1828,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id021
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1740,7 +1852,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id021
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"id\": \"REPLACE_ME\",\n  \"periodName\": \"REPLACE_ME\"\n}"
@@ -1761,7 +1876,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id021
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitSchedulePeriod\"\n    },\n    \"id\": \"REPLACE_ME\"\
@@ -1803,7 +1921,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id022
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1827,7 +1945,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id022
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"id\": \"REPLACE_ME\",\n  \"scheduleName\": \"REPLACE_ME\"\n}"
@@ -1848,7 +1969,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id022
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"BenefitSchedules\"\n    },\n    \"id\": \"REPLACE_ME\"\

@@ -19,11 +19,11 @@ collection:
       description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
         a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
         global.
-    authentication: &id001
+    authentication:
       type: basic
       username: '{{ _.btp_client_id }}'
       password: '{{ _.btp_client_secret }}'
-    headers: &id002
+    headers:
     - name: Content-Type
       value: application/x-www-form-urlencoded
     parameters: []
@@ -39,7 +39,7 @@ collection:
         \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
         \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
         insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
-    body: &id003
+    body:
       mimeType: application/x-www-form-urlencoded
       params:
       - name: grant_type
@@ -51,8 +51,13 @@ collection:
     meta:
       id: req_1db237356d1737ea148065de63e896e1
       description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
-    authentication: *id001
-    headers: *id002
+    authentication:
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
     parameters: []
     scripts:
       afterResponse: 'const data = insomnia.response.json();
@@ -60,7 +65,12 @@ collection:
         if (!data.access_token) throw new Error(''Token ausente na resposta'');
 
         insomnia.globals.set(''btp_access_token'', data.access_token);'
-    body: *id003
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
   - name: 02 — Token SuccessFactors via Destination
     url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
     method: GET
@@ -138,7 +148,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id004
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -163,7 +173,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id004
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"ExternalUser\"\n    },\n    \"userId\": \"REPLACE_ME\"\
@@ -190,7 +203,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id005
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -214,7 +227,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id005
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"photoType\": 0,\n  \"userId\": \"REPLACE_ME\",\n  \"photo\": \"REPLACE_ME\"\n}"
@@ -235,7 +251,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id005
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"Photo\"\n    },\n    \"photoType\": 0,\n    \"userId\"\
@@ -277,7 +296,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id006
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -301,7 +320,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id006
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"userId\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
@@ -322,7 +344,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id006
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"User\"\n    },\n    \"userId\": \"REPLACE_ME\",\n \

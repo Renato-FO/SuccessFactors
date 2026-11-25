@@ -19,11 +19,11 @@ collection:
       description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
         a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
         global.
-    authentication: &id001
+    authentication:
       type: basic
       username: '{{ _.btp_client_id }}'
       password: '{{ _.btp_client_secret }}'
-    headers: &id002
+    headers:
     - name: Content-Type
       value: application/x-www-form-urlencoded
     parameters: []
@@ -39,7 +39,7 @@ collection:
         \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
         \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
         insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
-    body: &id003
+    body:
       mimeType: application/x-www-form-urlencoded
       params:
       - name: grant_type
@@ -51,8 +51,13 @@ collection:
     meta:
       id: req_b102a9fdc44e668103093b751ac39688
       description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
-    authentication: *id001
-    headers: *id002
+    authentication:
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
     parameters: []
     scripts:
       afterResponse: 'const data = insomnia.response.json();
@@ -60,7 +65,12 @@ collection:
         if (!data.access_token) throw new Error(''Token ausente na resposta'');
 
         insomnia.globals.set(''btp_access_token'', data.access_token);'
-    body: *id003
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
   - name: 02 — Token SuccessFactors via Destination
     url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
     method: GET
@@ -136,8 +146,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id004
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -178,7 +187,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id004
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -200,7 +211,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id004
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/EmpCostDistribution'
     method: GET
@@ -215,7 +228,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id004
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -250,7 +265,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id004
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -271,7 +288,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id004
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -301,7 +320,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/EmpCostDistribution'
       method: GET
@@ -316,7 +337,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -339,7 +362,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -357,7 +382,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -379,7 +406,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/EmpCostDistribution'
       method: GET
@@ -394,7 +423,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -416,7 +447,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — usersSysIdNav
       url: '{{ _.base_url }}/odata/v2/EmpCostDistribution'
       method: GET
@@ -431,7 +464,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -453,7 +488,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -471,7 +508,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id004
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -499,8 +538,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id005
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -542,7 +580,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id005
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -565,7 +605,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id005
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/EmpCostDistributionItem'
     method: GET
@@ -580,7 +622,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id005
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -623,7 +667,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -641,7 +687,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -664,7 +712,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — createdByNav
       url: '{{ _.base_url }}/odata/v2/EmpCostDistributionItem'
       method: GET
@@ -679,7 +729,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -702,7 +754,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — lastModifiedByNav
       url: '{{ _.base_url }}/odata/v2/EmpCostDistributionItem'
       method: GET
@@ -717,7 +771,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id005
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -744,8 +800,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id006
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -785,7 +840,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id006
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -807,7 +864,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id006
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/EmpEmployment'
     method: GET
@@ -822,7 +881,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id006
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -857,7 +918,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id006
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -878,7 +941,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id006
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -908,7 +973,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -926,7 +993,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -949,7 +1018,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -967,7 +1038,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -990,7 +1063,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — empGlobalAssignmentNav
       url: '{{ _.base_url }}/odata/v2/EmpEmployment'
       method: GET
@@ -1005,7 +1080,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1028,7 +1105,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1046,7 +1125,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1069,7 +1150,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1087,7 +1170,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1109,7 +1194,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1127,7 +1214,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1149,7 +1238,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1167,7 +1258,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1190,7 +1283,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1208,7 +1303,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1230,7 +1327,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — personNav
       url: '{{ _.base_url }}/odata/v2/EmpEmployment'
       method: GET
@@ -1245,7 +1344,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1267,7 +1368,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '{{ _.page_size }}'
         disabled: false
@@ -1285,7 +1388,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1307,7 +1412,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — userNav
       url: '{{ _.base_url }}/odata/v2/EmpEmployment'
       method: GET
@@ -1322,7 +1429,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1344,7 +1453,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — wfRequestNav
       url: '{{ _.base_url }}/odata/v2/EmpEmployment'
       method: GET
@@ -1359,7 +1470,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id006
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1386,8 +1499,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id007
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -1427,7 +1539,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id007
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1449,7 +1563,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id007
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/EmpEmploymentHigherDuty'
     method: GET
@@ -1464,7 +1580,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id007
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1499,7 +1617,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id007
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1520,7 +1640,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id007
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1550,7 +1672,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — employmentNav
       url: '{{ _.base_url }}/odata/v2/EmpEmploymentHigherDuty'
       method: GET
@@ -1565,7 +1689,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1587,7 +1713,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — userNav
       url: '{{ _.base_url }}/odata/v2/EmpEmploymentHigherDuty'
       method: GET
@@ -1602,7 +1730,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id007
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1630,8 +1760,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id008
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -1673,7 +1802,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id008
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1696,7 +1827,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id008
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/EmpEmploymentTermination'
     method: GET
@@ -1711,7 +1844,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id008
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1753,7 +1888,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — employmentNav
       url: '{{ _.base_url }}/odata/v2/EmpEmploymentTermination'
       method: GET
@@ -1768,7 +1905,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1791,7 +1930,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — jobInfoNav
       url: '{{ _.base_url }}/odata/v2/EmpEmploymentTermination'
       method: GET
@@ -1806,7 +1947,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1829,7 +1972,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — personNav
       url: '{{ _.base_url }}/odata/v2/EmpEmploymentTermination'
       method: GET
@@ -1844,7 +1989,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1867,7 +2014,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — userNav
       url: '{{ _.base_url }}/odata/v2/EmpEmploymentTermination'
       method: GET
@@ -1882,7 +2031,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id008
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -1909,8 +2060,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id009
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -1950,7 +2100,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -1972,7 +2124,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/EmpGlobalAssignment'
     method: GET
@@ -1987,7 +2141,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2022,7 +2178,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2043,7 +2201,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id009
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2073,7 +2233,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — assignmentTypeNav
       url: '{{ _.base_url }}/odata/v2/EmpGlobalAssignment'
       method: GET
@@ -2088,7 +2250,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2110,7 +2274,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — employmentNav
       url: '{{ _.base_url }}/odata/v2/EmpGlobalAssignment'
       method: GET
@@ -2125,7 +2291,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2147,7 +2315,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — userNav
       url: '{{ _.base_url }}/odata/v2/EmpGlobalAssignment'
       method: GET
@@ -2162,7 +2332,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id009
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2189,8 +2361,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id010
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -2230,7 +2401,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id010
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2252,7 +2425,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id010
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/EmpJob'
     method: GET
@@ -2267,7 +2442,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id010
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2302,7 +2479,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id010
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2323,7 +2502,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id010
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -2353,7 +2534,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — assessmentStatusNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2368,7 +2551,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2390,7 +2575,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — businessUnitNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2405,7 +2592,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2427,7 +2616,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — codeOfJobForEldpNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2442,7 +2633,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2464,7 +2657,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — companyNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2479,7 +2674,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2501,7 +2698,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — contractTypeNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2516,7 +2715,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2538,7 +2739,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — costCenterNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2553,7 +2756,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2575,7 +2780,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — countryOfCompanyNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2590,7 +2797,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2612,7 +2821,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — departmentNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2627,7 +2838,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2649,7 +2862,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — dismissalsNoticePeriodForEmployerNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2664,7 +2879,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2686,7 +2903,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — divisionNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2701,7 +2920,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2723,7 +2944,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — eeo1JobCategoryNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2738,7 +2961,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2760,7 +2985,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — eeo4JobCategoryNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2775,7 +3002,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2797,7 +3026,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — eeo5JobCategoryNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2812,7 +3043,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2834,7 +3067,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — eeo6JobCategoryNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2849,7 +3084,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2871,7 +3108,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — eeoClassNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2886,7 +3125,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2908,7 +3149,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — electoralCollegeForWorkersRepresentativesNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2923,7 +3166,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2945,7 +3190,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — electoralCollegeForWorksCouncilNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2960,7 +3207,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -2982,7 +3231,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — empRelationshipNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -2997,7 +3248,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3019,7 +3272,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — emplStatusNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3034,7 +3289,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3056,7 +3313,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — employeeClassNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3071,7 +3330,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3093,7 +3354,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — employeeWorkgroupMembershipNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3108,7 +3371,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3130,7 +3395,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — employmentNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3145,7 +3412,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3167,7 +3436,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — employmentTypeNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3182,7 +3453,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3204,7 +3477,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — eventNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3219,7 +3494,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3241,7 +3518,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — eventReasonNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3256,7 +3535,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3278,7 +3559,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — familyRelationshipWithEmployerNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3293,7 +3576,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3315,7 +3600,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — flsaStatusNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3330,7 +3617,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3352,7 +3641,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — fromCurrencyNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3367,7 +3658,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3389,7 +3682,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — harmfulAgentExposureNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3404,7 +3699,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3427,7 +3724,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — holidayCalendarCodeNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3442,7 +3741,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3464,7 +3765,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — jobCodeNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3479,7 +3782,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3501,7 +3806,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — jobGroupNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3516,7 +3823,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3538,7 +3847,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — locationNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3553,7 +3864,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3575,7 +3888,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — managerEmploymentNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3590,7 +3905,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3612,7 +3929,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — managerUserNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3627,7 +3946,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3649,7 +3970,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — occupationGtmNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3664,7 +3987,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3686,7 +4011,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — occupationPerNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3701,7 +4028,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3723,7 +4052,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — occupationalLevelsNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3738,7 +4069,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3760,7 +4093,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — payGradeNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3775,7 +4110,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3797,7 +4134,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — payScaleAreaNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3812,7 +4151,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3834,7 +4175,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — payScaleGroupNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3849,7 +4192,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3871,7 +4216,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — payScaleLevelNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3886,7 +4233,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3908,7 +4257,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — payScaleTypeNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3923,7 +4274,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3945,7 +4298,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — periodIndicatorNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3960,7 +4315,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -3982,7 +4339,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — positionNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -3997,7 +4356,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4019,7 +4380,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — probationaryPeriodMeasureNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -4034,7 +4397,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4056,7 +4421,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — regularTempNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -4071,7 +4438,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4093,7 +4462,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — sickPaySupplementMeasureNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -4108,7 +4479,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4130,7 +4503,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — sickPaySupplementNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -4145,7 +4520,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4168,7 +4545,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — timeTypeProfileCodeNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -4183,7 +4562,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4205,7 +4586,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — toCurrencyNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -4220,7 +4603,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4242,7 +4627,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — userNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -4257,7 +4644,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4279,7 +4668,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — wfRequestNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -4294,7 +4685,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4316,7 +4709,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — workerCategoryNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -4331,7 +4726,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4353,7 +4750,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — workscheduleCodeNav
       url: '{{ _.base_url }}/odata/v2/EmpJob'
       method: GET
@@ -4368,7 +4767,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id010
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4395,8 +4796,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id011
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -4437,7 +4837,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id011
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4459,7 +4861,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id011
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/EmpJobRelationships'
     method: GET
@@ -4474,7 +4878,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id011
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4509,7 +4915,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id011
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4530,7 +4938,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id011
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4561,7 +4971,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — employmentNav
       url: '{{ _.base_url }}/odata/v2/EmpJobRelationships'
       method: GET
@@ -4576,7 +4988,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4599,7 +5013,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — relEmploymentNav
       url: '{{ _.base_url }}/odata/v2/EmpJobRelationships'
       method: GET
@@ -4614,7 +5030,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4637,7 +5055,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — relUserNav
       url: '{{ _.base_url }}/odata/v2/EmpJobRelationships'
       method: GET
@@ -4652,7 +5072,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4675,7 +5097,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — relationshipTypeNav
       url: '{{ _.base_url }}/odata/v2/EmpJobRelationships'
       method: GET
@@ -4690,7 +5114,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4713,7 +5139,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — userNav
       url: '{{ _.base_url }}/odata/v2/EmpJobRelationships'
       method: GET
@@ -4728,7 +5156,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id011
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4756,8 +5186,7 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - &id012
-      name: $format
+    - name: $format
       value: json
       disabled: false
     - name: $top
@@ -4799,7 +5228,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id012
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4822,7 +5253,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id012
+    - name: $format
+      value: json
+      disabled: false
   - name: 04 — Filtrar
     url: '{{ _.base_url }}/odata/v2/EmpWorkPermit'
     method: GET
@@ -4837,7 +5270,9 @@ collection:
     - name: Accept
       value: application/json
     parameters:
-    - *id012
+    - name: $format
+      value: json
+      disabled: false
     - name: $top
       value: '{{ _.page_size }}'
       disabled: false
@@ -4880,7 +5315,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — countryNav
       url: '{{ _.base_url }}/odata/v2/EmpWorkPermit'
       method: GET
@@ -4895,7 +5332,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4918,7 +5357,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — documentTypeNav
       url: '{{ _.base_url }}/odata/v2/EmpWorkPermit'
       method: GET
@@ -4933,7 +5374,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4956,7 +5399,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — employmentNav
       url: '{{ _.base_url }}/odata/v2/EmpWorkPermit'
       method: GET
@@ -4971,7 +5416,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false
@@ -4994,7 +5441,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
     - name: Expandir — userNav
       url: '{{ _.base_url }}/odata/v2/EmpWorkPermit'
       method: GET
@@ -5009,7 +5458,9 @@ collection:
       - name: Accept
         value: application/json
       parameters:
-      - *id012
+      - name: $format
+        value: json
+        disabled: false
       - name: $top
         value: '1'
         disabled: false

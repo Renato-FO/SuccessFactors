@@ -19,11 +19,11 @@ collection:
       description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
         a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
         global.
-    authentication: &id001
+    authentication:
       type: basic
       username: '{{ _.btp_client_id }}'
       password: '{{ _.btp_client_secret }}'
-    headers: &id002
+    headers:
     - name: Content-Type
       value: application/x-www-form-urlencoded
     parameters: []
@@ -39,7 +39,7 @@ collection:
         \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
         \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
         insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
-    body: &id003
+    body:
       mimeType: application/x-www-form-urlencoded
       params:
       - name: grant_type
@@ -51,8 +51,13 @@ collection:
     meta:
       id: req_7ac32bb5162b50edcba18b7c517d1505
       description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
-    authentication: *id001
-    headers: *id002
+    authentication:
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
     parameters: []
     scripts:
       afterResponse: 'const data = insomnia.response.json();
@@ -60,7 +65,12 @@ collection:
         if (!data.access_token) throw new Error(''Token ausente na resposta'');
 
         insomnia.globals.set(''btp_access_token'', data.access_token);'
-    body: *id003
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
   - name: 02 — Token SuccessFactors via Destination
     url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
     method: GET
@@ -138,7 +148,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id004
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -163,7 +173,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id004
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\": \"/Date(946684800000)/\",\n  \"status\": \"\
@@ -185,7 +198,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id004
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FOBusinessUnit\"\n    },\n    \"externalCode\": \"\
@@ -227,7 +243,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id005
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -252,7 +268,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id005
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\": \"/Date(946684800000)/\",\n  \"country\":\
@@ -275,7 +294,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id005
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FOCompany\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
@@ -348,7 +370,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id006
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -373,7 +395,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id006
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\": \"/Date(946684800000)/\",\n  \"status\": \"\
@@ -395,7 +420,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id006
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FOCostCenter\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
@@ -437,7 +465,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id007
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -462,7 +490,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id007
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\": \"/Date(946684800000)/\",\n  \"status\": \"\
@@ -484,7 +515,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id007
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FODepartment\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
@@ -526,7 +560,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id008
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -551,7 +585,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id008
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\": \"/Date(946684800000)/\",\n  \"status\": \"\
@@ -573,7 +610,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id008
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FODivision\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
@@ -706,7 +746,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id009
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -731,7 +771,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id009
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\": \"/Date(946684800000)/\",\n  \"status\": \"\
@@ -753,7 +796,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id009
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FOJobCode\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
@@ -795,7 +841,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id010
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -820,7 +866,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id010
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\": \"/Date(946684800000)/\",\n  \"status\": \"\
@@ -842,7 +891,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id010
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FOJobFunction\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
@@ -1007,7 +1059,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id011
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1032,7 +1084,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id011
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\": \"/Date(946684800000)/\",\n  \"status\": \"\
@@ -1054,7 +1109,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id011
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FOPayGroup\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
@@ -1128,7 +1186,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id012
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1154,7 +1212,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id012
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -1177,7 +1238,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id012
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityARG\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -1222,7 +1286,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id013
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1248,7 +1312,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id013
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -1271,7 +1338,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id013
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityBLR\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -1316,7 +1386,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id014
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1342,7 +1412,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id014
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -1365,7 +1438,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id014
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityBOL\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -1410,7 +1486,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id015
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1436,7 +1512,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id015
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -1459,7 +1538,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id015
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityCAN\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -1504,7 +1586,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id016
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1530,7 +1612,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id016
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -1553,7 +1638,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id016
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityDEU\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -1598,7 +1686,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id017
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1624,7 +1712,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id017
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -1647,7 +1738,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id017
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityESP\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -1692,7 +1786,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id018
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1718,7 +1812,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id018
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -1741,7 +1838,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id018
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityFRA\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -1786,7 +1886,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id019
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1812,7 +1912,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id019
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -1835,7 +1938,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id019
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityPRY\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -1880,7 +1986,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id020
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -1906,7 +2012,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id020
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -1929,7 +2038,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id020
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityRUS\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -1974,7 +2086,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id021
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -2000,7 +2112,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id021
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -2023,7 +2138,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id021
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntitySAU\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -2068,7 +2186,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id022
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -2094,7 +2212,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id022
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -2117,7 +2238,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id022
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntitySGP\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -2162,7 +2286,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id023
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -2188,7 +2312,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id023
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -2211,7 +2338,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id023
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntitySVN\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -2256,7 +2386,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id024
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -2282,7 +2412,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id024
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -2305,7 +2438,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id024
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityTHA\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -2350,7 +2486,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id025
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -2376,7 +2512,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id025
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -2399,7 +2538,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id025
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityTUN\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -2444,7 +2586,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id026
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -2470,7 +2612,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id026
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"LegalEntity_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"LegalEntity_externalCode\"\
@@ -2493,7 +2638,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id026
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"LegalEntityUSA\"\n    },\n    \"LegalEntity_effectiveStartDate\"\
@@ -2537,7 +2685,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id027
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -2562,7 +2710,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id027
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"code\": \"REPLACE_ME\",\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"effectiveStatus\"\
@@ -2584,7 +2735,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id027
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"Position\"\n    },\n    \"code\": \"REPLACE_ME\",\n\
@@ -2628,7 +2782,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id028
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -2654,7 +2808,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id028
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"Position_code\": \"REPLACE_ME\",\n  \"Position_effectiveStartDate\": \"/Date(946684800000)/\"\
@@ -2677,7 +2834,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id028
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PositionMatrixRelationship\"\n    },\n    \"Position_code\"\
@@ -2721,7 +2881,7 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: &id029
+    parameters:
     - name: $format
       value: json
       disabled: false
@@ -2746,7 +2906,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id029
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "{\n  \"code\": \"0\",\n  \"positionId\": \"0\",\n  \"processingStatus\": \"REPLACE_ME\",\n  \"requisitionId\"\
@@ -2768,7 +2931,10 @@ collection:
       value: application/json
     - name: Content-Type
       value: application/json
-    parameters: *id029
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
     body:
       mimeType: application/json
       text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PositionRequisitionStatus\"\n    },\n    \"code\":\

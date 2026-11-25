@@ -45,6 +45,21 @@ test('requires private-environment configuration before network or writes',async
   await assert.rejects((await ctx.api()).prepare('destinations-subaccount'),/PRIVADO/);
   assert.equal(ctx.sent.length,0);assert.equal(ctx.writes.length,0);
 });
+test('initial Setup discovers the service URL with no base_url configured',async()=>{
+  const ctx=mock({base_url:undefined},request=>{
+    assert.equal(request.url,'https://auth.example.com/oauth/token');
+    return {access_token:'example-btp-token',expires_in:3600};
+  });
+  ctx.insomnia.request.url='https://setup.invalid/';
+  const api=await ctx.api();
+  await api.prepare('destinations-subaccount');
+  assert.equal(ctx.insomnia.request.url,'https://destination.example.com/destination-configuration/v1/subaccountDestinations');
+  assert.equal(ctx.values.get('base_url'),undefined);
+  await api.prepare('destination');
+  assert.ok(ctx.insomnia.request.url.endsWith('/destinations/EXAMPLE'));
+  ctx.response(destination());await api.complete('destination');
+  assert.equal(ctx.values.get('base_url'),'https://api.example.com');
+});
 test('imports region-independent service keys and stores only in the active scope',async()=>{
   for(const scope of ['collection','global']){
     const ctx=mock({setup_scope:scope,destination_service_key:JSON.stringify({credentials:{url:'https://auth.eu.example.com',uri:'https://dest.eu.example.com',clientid:'generic-client',clientsecret:'generic-secret'}})},request=>{

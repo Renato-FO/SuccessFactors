@@ -18,7 +18,7 @@ collection:
       setup_action: destinations-subaccount
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_1988a90660eae24718294a4256709ed4
@@ -35,7 +35,7 @@ collection:
       setup_action: destinations-instance
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_8c8640e20d9976bf486bbba19c2cc9b4
@@ -53,7 +53,7 @@ collection:
       setup_action: destination
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_af589b073909fcb0456dcfe2541cc1e1
@@ -71,7 +71,7 @@ collection:
       setup_action: metadata
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_8757e4f9da97fdf3af6a337bd0c409cb
@@ -89,7 +89,7 @@ collection:
       setup_action: entity
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_58ad6aeee77fcf898d8ecd65481c522e
@@ -107,7 +107,7 @@ collection:
       setup_action: cis-global
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_2f4b457a5f02e1602b6be12d16e7e137
@@ -124,7 +124,7 @@ collection:
       setup_action: cis-subaccounts
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_77d66f928d24aa3c683732d71f131d04
@@ -141,7 +141,7 @@ collection:
       setup_action: cis-subaccount
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_915c3fffffb4767b8272338572884014
@@ -159,7 +159,7 @@ collection:
       setup_action: cf-info
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_e3e2e2aed8f7a027a5ff5b1a76bfb828
@@ -177,7 +177,7 @@ collection:
       setup_action: cf-native-login
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_1e13e2d9247af1951850d4eaf1bea76f
@@ -203,7 +203,7 @@ collection:
       setup_action: cf-orgs
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_bc039482579db9df0b4bd648d25e6f24
@@ -219,7 +219,7 @@ collection:
       setup_action: cf-spaces
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_1740eb951406be8985e8ee43a9f9ea08
@@ -235,7 +235,7 @@ collection:
       setup_action: cf-instances
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_fc11de0474722468fb7054fd2a5a5055
@@ -252,7 +252,7 @@ collection:
       setup_action: cf-bindings
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_6893843956eeefedf2a6c5aa86747f4b
@@ -270,7 +270,7 @@ collection:
       setup_action: cf-key
     children:
     - name: Executar
-      url: '{{ _.base_url }}'
+      url: https://setup.invalid/
       method: GET
       meta:
         id: req_900dbbaa2f2567c0bb1d0df750d89ef2

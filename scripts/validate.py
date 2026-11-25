@@ -56,6 +56,9 @@ def validate():
             assert doc['scripts']['preRequest'].startswith(runtime)
             assert doc['scripts']['afterResponse'].startswith(runtime)
             assert sum(item.get('name')=='Setup' for item in doc['collection'])==1
+            setup=next(item for item in doc['collection'] if item.get('name')=='Setup')
+            for step in setup['children']:
+                assert step['children'][0]['url']=='https://setup.invalid/', 'Setup must not require base_url before discovery'
         for kind,code in doc.get('scripts',{}).items(): scripts[code]=kind
         for obj in [doc['meta'],doc['environments']['meta']]:
             assert obj['id'] not in ids

@@ -41,7 +41,9 @@ def attach_setup(doc):
     }
     children=[]
     for action,name,description in STEPS:
-        request=dict(name='Executar',url='{{ _.base_url }}',method='GET',
+        # The pre-request hook replaces this reserved, non-routable URL.
+        # Never interpolate the service URL before Setup has discovered it.
+        request=dict(name='Executar',url='https://setup.invalid/',method='GET',
             meta=dict(id=uid('req','setup/'+action),description=description),authentication={},headers=[],parameters=[])
         if action=='cf-native-login':
             request['authentication']=dict(type='oauth2',grantType='authorization_code',

@@ -38,7 +38,6 @@ No Environment privado, preencha:
 {
   "setup_scope": "collection",
   "setup_private_environment": true,
-  "base_url": "https://api.example.successfactors.com",
   "btp_token_url": "",
   "btp_client_id": "",
   "btp_client_secret": "",
@@ -50,6 +49,8 @@ No Environment privado, preencha:
 ```
 
 Use `url` da service key com `/oauth/token` em `btp_token_url`, `clientid` em `btp_client_id`, `clientsecret` em `btp_client_secret` e `uri` em `destination_service_url`. Alternativamente, adicione `destination_service_key` e cole o JSON da chave como objeto ou string JSON: o Setup aceita a chave direta ou o wrapper `credentials` e extrai esses quatro valores automaticamente. Não são montadas URLs trocando códigos de região: EU10, US10 e demais regiões usam os endpoints reais da chave.
+
+`base_url` não é entrada do Setup: a etapa 03 o descobre na Destination. As requisições de Setup usam `https://setup.invalid/` apenas como placeholder reservado, substituído pelo hook antes do envio. Se esse endereço aparecer em um erro de rede, o hook não executou; não preencha `base_url` para contornar isso.
 
 Para os demais parâmetros das consultas (IDs, códigos e datas), use `environments/environment.example.json` como referência e preencha apenas os necessários no ambiente do cliente. O Setup não inventa IDs de pessoas ou empresas e não copia esses dados de outro Environment.
 

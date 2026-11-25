@@ -392,4 +392,7 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--metadata',required=True,type=Path)
     parser.add_argument('--out',default='.')
-    build(parser.parse_args())
+    args=parser.parse_args()
+    build(args)
+    from package_collections import package
+    package(args.out)

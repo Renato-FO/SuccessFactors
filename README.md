@@ -1,8 +1,10 @@
 # SuccessFactors — Insomnia API Library
 
-Biblioteca **genérica** de chamadas SAP SuccessFactors OData v2 para Insomnia, organizada por área funcional e preparada para Git Sync.
+Biblioteca **genérica** de chamadas SAP SuccessFactors OData v2 para Insomnia, com uma coleção essencial leve no Git Sync e o catálogo completo como importação opcional.
 
-**457 entidades padrão · 70 operações OData · 2.337 relacionamentos · 8.354 chamadas · 42 coleções**
+**Padrão: uma coleção essencial, com 7 entidades.** `User`, `Photo`, `EmpJob`, `FOCompany`, `FOLocation`, `AutoDelegateDetail` e `AutoDelegateConfig`. Inclui autenticação, identificação do usuário/gestor, subordinados, fotos, empresas, locais e delegações.
+
+**Opcional em ZIP: 457 entidades padrão · 70 operações OData · 2.337 relacionamentos · 8.354 chamadas · 42 coleções.** O ZIP não é carregado como coleção pelo Git Sync.
 
 Não contém URL real de API, partição, tenant, company ID, usuários, registros, credenciais ou extensões customizadas. Todos os valores são placeholders ou exemplos fictícios. Não é um SDK oficial SAP nem uma garantia de disponibilidade de todas as operações em qualquer tenant.
 
@@ -10,13 +12,19 @@ Não contém URL real de API, partição, tenant, company ID, usuários, registr
 
 1. Crie um projeto no Insomnia e selecione **Git Sync**.
 2. Use a URL deste repositório, ou clone o repositório e selecione **Local folder**.
-3. Selecione a branch `main`. As coleções YAML estão em `collections/`, separadas por área e por leitura/escrita.
+3. Selecione a branch `main`. Em `collections/` há somente `SuccessFactors-Essencial.yaml`.
 4. Abra **Environments → SuccessFactors** e crie um subambiente **privado** para preencher seus valores reais.
-5. Selecione esse ambiente global na coleção que deseja usar. Comece por **SuccessFactors | Inicio e diagnostico**.
+5. Selecione esse ambiente global na coleção **SuccessFactors | Essencial**.
 
 Alternativa: **Import → File** para importar apenas um arquivo YAML. O formato é o nativo **Insomnia v5**, validado contra o schema oficial 5.1. Não há exportação duplicada das mesmas coleções na raiz.
 
 Git Sync e importação dependem da versão instalada do Insomnia. Consulte as [instruções oficiais de Git Sync](https://developer.konghq.com/how-to/synchronize-with-git/) e os [formatos de importação](https://developer.konghq.com/insomnia/import-export/).
+
+## Importar somente as áreas desejadas
+
+Baixe `optional/successfactors-complete.zip` e extraia **fora da pasta do projeto Git Sync**. No Insomnia, use **Import → File** e escolha apenas o YAML da área desejada. Por exemplo, `collections/02-Pessoas-e-Dados-Pessoais/Leitura-01.yaml`. Não é necessário importar o restante do ZIP. As pastas abaixo descrevem a organização dentro do arquivo opcional.
+
+Se seu projeto antigo já carregou as 42 coleções e está lento ou bloqueado por alterações locais, crie um projeto novo com a versão atual. Isso evita depender de Pull/Discard no projeto antigo. Preserve seus ambientes privados e não descarte alterações locais para fazer essa migração. Também é possível importar apenas o YAML essencial e `environments/SuccessFactors.yaml` por arquivo em um projeto novo.
 
 ## Configuração e token
 
@@ -76,7 +84,7 @@ Use ambientes privados ou variáveis secretas do Insomnia para valores reais. To
 | `16-Plataforma-e-Documentos` | Documentos, anexos e serviços da plataforma |
 | `17-Operacoes` | Function imports, incluindo operações com efeitos de escrita |
 
-Coleções grandes são divididas em partes de até 35 entidades. Em cada área, **Leitura** e **Escrita** são coleções separadas. Pastas de entidades contêm uma subpasta **Relacionamentos** com navegação por chave e consultas com `$expand`.
+No ZIP opcional, coleções grandes são divididas em partes de até 35 entidades. Em cada área, **Leitura** e **Escrita** são coleções separadas. Pastas de entidades contêm uma subpasta **Relacionamentos** com navegação por chave e consultas com `$expand`. A coleção essencial não carrega esse conjunto extenso de relacionamentos.
 
 ## Usar as consultas
 
@@ -102,6 +110,8 @@ As 70 operações têm método e parâmetros derivados das assinaturas OData. Al
 - `catalog/entities.json`: campos técnicos, tipos, chaves e relacionamentos.
 - `catalog/functions.json`: assinaturas das operações.
 - `catalog/summary.json`: contagem e arquivos das coleções.
+- `catalog/lite-summary.json`: contagem e entidades da coleção essencial ativa.
+- `optional/successfactors-complete.zip`: arquivos completos, disponíveis para importação seletiva.
 - `schemas/insomnia.schema.5.1.json`: schema público oficial do Insomnia, preservado com seu identificador de origem.
 
 A biblioteca cobre um subconjunto amplo de entidades padrão. O SuccessFactors expõe superfícies diferentes conforme módulos, versão, permissões e configuração. Não inclui extensões `cust_*`, entidades de templates numerados ou campos customizados. Nomes de países e versões presentes em tipos padrão são parte das assinaturas públicas, não identificadores de um tenant.
@@ -115,7 +125,7 @@ python scripts/validate.py
 node scripts/test-scripts.mjs
 ```
 
-O gerador usa uma lista de famílias padrão, ignora labels, defaults, URLs e valores de registros, e não copia o XML de origem. Antes de regenerar, remova arquivos de coleções antigas se a lista de entidades mudar. A geração não modifica a API.
+O gerador usa uma lista de famílias padrão, ignora labels, defaults, URLs e valores de registros, e não copia o XML de origem. Ao terminar, empacota as coleções completas no ZIP e mantém apenas a essencial em `collections/`. O script `package_collections.py` também permite reconstruir a essencial a partir do ZIP existente. A geração não modifica a API.
 
 ## Validação
 

@@ -1,0 +1,18 @@
+{
+  "collections": 1,
+  "requests": 35,
+  "entities": 7,
+  "entity_names": [
+    "User",
+    "Photo",
+    "EmpJob",
+    "FOCompany",
+    "FOLocation",
+    "AutoDelegateDetail",
+    "AutoDelegateConfig"
+  ],
+  "files": [
+    "collections/SuccessFactors-Essencial.yaml"
+  ],
+  "optional_archive": "optional/successfactors-complete.zip"
+}

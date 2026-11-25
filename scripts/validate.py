@@ -1,6 +1,7 @@
 """Validate every collection, IDs, environment references and public content."""
 import json
 import re
+import zipfile
 from pathlib import Path
 
 import jsonschema
@@ -12,6 +13,13 @@ def validate():
     schema=json.loads((ROOT/'schemas/insomnia.schema.5.1.json').read_text(encoding='utf-8'))
     validator=jsonschema.Draft202012Validator(schema)
     ids=set();total=0;files=list((ROOT/'collections').rglob('*.yaml'));scripts={};fixtures={}
+    lite_summary=json.loads((ROOT/'catalog/lite-summary.json').read_text())
+    summary=json.loads((ROOT/'catalog/summary.json').read_text())
+    sources=[(p.relative_to(ROOT).as_posix(),p.read_text(encoding='utf-8')) for p in files]
+    with zipfile.ZipFile(ROOT/lite_summary['optional_archive']) as archive:
+        assert archive.testzip() is None
+        assert set(archive.namelist())=={item['file'] for item in summary['files']}
+        sources.extend((name,archive.read(name).decode('utf-8')) for name in archive.namelist())
     forbidden=re.compile(r'api\d+(?:sales|preview)?\.successfactors\.com|cust_|https?://[^\s\"\']*ondemand\.com',re.I)
     global_doc=yaml.safe_load((ROOT/'environments/SuccessFactors.yaml').read_text(encoding='utf-8'))
     validator.validate(global_doc)
@@ -37,10 +45,10 @@ def validate():
                 if n['method'] in ('POST','MERGE','DELETE') and '/oauth/token' not in n['url'] and 'btp_token_url' not in n['url']:
                     assert n['meta']['description'], 'Missing operation description'
             else: visit(n.get('children',[]),env)
-    for p in files:
-        text=p.read_text(encoding='utf-8')
+    for name,text in sources:
+        p=Path(name)
         assert not any(isinstance(token,(yaml.tokens.AnchorToken,yaml.tokens.AliasToken)) for token in yaml.scan(text)), 'YAML aliases are incompatible with strict Insomnia import limits: '+str(p)
-        assert not forbidden.search(text), 'Instance-specific content: '+str(p.relative_to(ROOT))
+        assert not forbidden.search(text), 'Instance-specific content: '+name
         doc=yaml.safe_load(text)
         validator.validate(doc)
         for obj in [doc['meta'],doc['environments']['meta']]:
@@ -51,13 +59,13 @@ def validate():
             if any(s in key for s in ('token','secret','saml_assertion','sf_company_id','sf_client_id','btp_client_id','destination_service_url')):
                 assert value=='', 'Credential/configuration must be blank: '+key
         visit(doc['collection'],env)
-    summary=json.loads((ROOT/'catalog/summary.json').read_text())
-    assert total==summary['requests']
-    assert len(files)==summary['collections']
+    assert total==summary['requests']+lite_summary['requests']
+    assert len(files)==lite_summary['collections']==1
+    assert len(sources)==summary['collections']+1
     for p in (ROOT/'catalog').glob('*'):
         if p.is_file(): assert not forbidden.search(p.read_text(encoding='utf-8')), 'Instance-specific catalog: '+p.name
     (ROOT/'.local').mkdir(exist_ok=True)
     (ROOT/'.local/script-fixtures.json').write_text(json.dumps(dict(scripts=list(scripts),fixtures=fixtures)),encoding='utf-8')
-    print(f'OK: {len(files)} collections, {total} requests; official schema, unique IDs, variable references, generic content and blank credentials.')
+    print(f'OK: {lite_summary["requests"]} active requests in one collection; {summary["requests"]} optional requests in ZIP; official schema, unique IDs, variable references, generic content and blank credentials.')
 
 if __name__=='__main__': validate()

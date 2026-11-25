@@ -1,0 +1,975 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Essencial
+meta:
+  id: wrk_3afd1c94af640c526599de312844f457
+  description: 'Colecao leve: autenticacao, diagnostico e consultas principais. Selecione o ambiente global SuccessFactors.'
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_625141baee2fc7a0caed6999693a2686
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_c65617f5be2f917ae514ab3f523868ff
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication:
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const localUrl = insomnia.environment.get('base_url') || insomnia.baseEnvironment.get('base_url');\n\
+        const globalUrl = insomnia.globals.get('base_url') || insomnia.baseGlobals.get('base_url');\nconst tokenStore\
+        \ = localUrl || !globalUrl ? insomnia.environment : insomnia.globals;\nconst data = insomnia.response.json();\n\
+        if (!data.access_token) throw new Error('Token BTP ausente');\ntokenStore.set('btp_access_token', data.access_token);\n\
+        const service = String(insomnia.variables.get('destination_service_url') || '').replace(/\\/$/, '');\nconst\
+        \ name = insomnia.variables.get('destination_name');\nif (!service || !name) throw new Error('Preencha destination_service_url\
+        \ e destination_name');\nconst response = await new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n\
+        \    url: service + '/destination-configuration/v1/destinations/' + encodeURIComponent(name),\n    method:\
+        \ 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token, Accept: 'application/json' }\n  },\
+        \ (error, response) => error ? reject(error) : resolve(response));\n});\nif (response.code !== 200) throw\
+        \ new Error('Destination retornou HTTP ' + response.code);\nconst destination = response.json();\nconst\
+        \ token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token) throw new Error('Destination\
+        \ não retornou token utilizável');\ntokenStore.set('access_token', token.value);\ninsomnia.test('Token SuccessFactors\
+        \ obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_505688b02d66cd6376c1a14cafa6db69
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication:
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const localUrl = insomnia.environment.get(''base_url'') || insomnia.baseEnvironment.get(''base_url'');
+
+        const globalUrl = insomnia.globals.get(''base_url'') || insomnia.baseGlobals.get(''base_url'');
+
+        const tokenStore = localUrl || !globalUrl ? insomnia.environment : insomnia.globals;
+
+        const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        tokenStore.set(''btp_access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_a4475ddb06517b85958303917c8d07e1
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const localUrl = insomnia.environment.get(''base_url'') || insomnia.baseEnvironment.get(''base_url'');
+
+        const globalUrl = insomnia.globals.get(''base_url'') || insomnia.baseGlobals.get(''base_url'');
+
+        const tokenStore = localUrl || !globalUrl ? insomnia.environment : insomnia.globals;
+
+        const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        tokenStore.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_82adef59ac5f83bc5e6cfa34428a0992
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const localUrl = insomnia.environment.get(''base_url'') || insomnia.baseEnvironment.get(''base_url'');
+
+        const globalUrl = insomnia.globals.get(''base_url'') || insomnia.baseGlobals.get(''base_url'');
+
+        const tokenStore = localUrl || !globalUrl ? insomnia.environment : insomnia.globals;
+
+        const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        tokenStore.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: Metadata XML
+  url: '{{ _.base_url }}/odata/v2/$metadata'
+  method: GET
+  meta:
+    id: req_1a7ff19df6cdb4907f7049097481a36c
+    description: ''
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/xml
+  parameters: []
+- name: Catalogo do servico
+  url: '{{ _.base_url }}/odata/v2/'
+  method: GET
+  meta:
+    id: req_afb56ba1d60dbd6051fcfee80512d6bb
+    description: ''
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+- name: Proxima pagina
+  url: '{{ _.next_page_url }}'
+  method: GET
+  meta:
+    id: req_23697cc6961f988f98c6fa14d996f1a1
+    description: Execute Listar primeiro. next_page_url recebe d.__next da resposta. Verifique o host antes de enviar.
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters: []
+- name: User
+  meta:
+    id: fld_16625489da1e4b0bf72736cfa495c7dc
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/User'
+    method: GET
+    meta:
+      id: req_e5a181d9dc49baebe6a515c55f620e7d
+      description: 'Chaves: userId (Edm.String). Execute Listar para preencher automaticamente key_User. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: userId,addressLine1,addressLine2,addressLine3,assignmentUUID,benchStrength,bonusBudgetAmount,bonusTarget,businessPhone
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"userId\": \"Edm.String\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_User', Object.entries(types).map(([k,t]) => k + '=' + literal(t,first[k])).join(','));\n\
+        }\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url', data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/User'
+    method: GET
+    meta:
+      id: req_d79bf27386fcb6da9b37d9df7a75c519
+      description: 'Chaves: userId (Edm.String). Execute Listar para preencher automaticamente key_User. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: userId,addressLine1,addressLine2,addressLine3,assignmentUUID,benchStrength,bonusBudgetAmount,bonusTarget,businessPhone
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})'
+    method: GET
+    meta:
+      id: req_68be0a1855e2f57f33dfb4cef4ff92d1
+      description: 'Chaves: userId (Edm.String). Execute Listar para preencher automaticamente key_User. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/User'
+    method: GET
+    meta:
+      id: req_bd3c3b7d93eb09811f5057385b37df48
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: userId eq 'REPLACE_ME'
+      disabled: false
+  - name: Usuario ativo e gestor por email
+    url: '{{ _.base_url }}/odata/v2/User'
+    method: GET
+    meta:
+      id: req_31313d1ca319e0274abc1ff393c1ee9e
+      description: ''
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: status eq 't' and email eq '{{ _.user_email }}'
+      disabled: false
+    - name: $select
+      value: userId,manager/userId
+      disabled: false
+    - name: $expand
+      value: manager
+      disabled: false
+- name: Photo
+  meta:
+    id: fld_fc1ddcb8fa855769c7d868e5587fc53a
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/Photo'
+    method: GET
+    meta:
+      id: req_f0cac77a270a3260c525aeaed8520c44
+      description: 'Chaves: photoType (Edm.Int32), userId (Edm.String). Execute Listar para preencher automaticamente
+        key_Photo. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: photoType,userId,height,lastModified,lastModifiedDateTime,lastModifiedWithTZ,mimeType,personUUID,photo,photoHash
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"photoType\": \"Edm.Int32\"\
+        , \"userId\": \"Edm.String\"};\nif (first && Object.keys(types).length && Object.keys(types).every(k =>\
+        \ first[k] !== undefined && first[k] !== null)) {\n  const literal = (type, value) => {\n    if (type ===\
+        \ 'Edm.String') return \"'\" + String(value).replaceAll(\"'\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime'\
+        \ || type === 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\\
+        d{4})?\\)\\/$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z', type\
+        \ === 'Edm.DateTime' ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset')\
+        \ + \"'\" + iso + \"'\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return\
+        \ String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n\
+        \  };\n  insomnia.environment.set('key_Photo', Object.entries(types).map(([k,t]) => k + '=' + literal(t,first[k])).join(','));\n\
+        }\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url', data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/Photo'
+    method: GET
+    meta:
+      id: req_8227866a3c84389f5c5f5301bdfc736a
+      description: 'Chaves: photoType (Edm.Int32), userId (Edm.String). Execute Listar para preencher automaticamente
+        key_Photo. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: photoType,userId,height,lastModified,lastModifiedDateTime,lastModifiedWithTZ,mimeType,personUUID,photo,photoHash
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/Photo({{ _.key_Photo }})'
+    method: GET
+    meta:
+      id: req_6210c5720063af0bd87ce0f4e1b5c783
+      description: 'Chaves: photoType (Edm.Int32), userId (Edm.String). Execute Listar para preencher automaticamente
+        key_Photo. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/Photo'
+    method: GET
+    meta:
+      id: req_bf71c6cd5bab5c2a061b2e599b330e92
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: photoType eq 0 and userId eq 'REPLACE_ME'
+      disabled: false
+  - name: Foto do usuario — tipo 1
+    url: '{{ _.base_url }}/odata/v2/Photo'
+    method: GET
+    meta:
+      id: req_305f574215fca317ef4a92c9bb8b86e5
+      description: ''
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: userId eq '{{ _.user_id }}' and photoType eq 1
+      disabled: false
+- name: EmpJob
+  meta:
+    id: fld_461b90bde27087751d9b38c2fe5fb45c
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/EmpJob'
+    method: GET
+    meta:
+      id: req_d7c4b80a057ee4fb84d32c29121ff636
+      description: 'Chaves: seqNumber (Edm.Int64), startDate (Edm.DateTime), userId (Edm.String). Execute Listar
+        para preencher automaticamente key_EmpJob. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: seqNumber,startDate,userId,assedicCertInitialStateNum,assedicCertObjectNum,assessmentStatus,businessUnit,calculationBase,changeReason,changeReasonExternal,codeOfJobForEldp
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"seqNumber\": \"Edm.Int64\"\
+        , \"startDate\": \"Edm.DateTime\", \"userId\": \"Edm.String\"};\nif (first && Object.keys(types).length\
+        \ && Object.keys(types).every(k => first[k] !== undefined && first[k] !== null)) {\n  const literal = (type,\
+        \ value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"'\", \"''\") + \"\
+        '\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\\
+        /Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z',\
+        \ type === 'Edm.DateTime' ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset')\
+        \ + \"'\" + iso + \"'\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return\
+        \ String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n\
+        \  };\n  insomnia.environment.set('key_EmpJob', Object.entries(types).map(([k,t]) => k + '=' + literal(t,first[k])).join(','));\n\
+        }\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url', data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/EmpJob'
+    method: GET
+    meta:
+      id: req_cee6747c3e57cbcd791dde2b87357172
+      description: 'Chaves: seqNumber (Edm.Int64), startDate (Edm.DateTime), userId (Edm.String). Execute Listar
+        para preencher automaticamente key_EmpJob. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: seqNumber,startDate,userId,assedicCertInitialStateNum,assedicCertObjectNum,assessmentStatus,businessUnit,calculationBase,changeReason,changeReasonExternal,codeOfJobForEldp
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/EmpJob({{ _.key_EmpJob }})'
+    method: GET
+    meta:
+      id: req_34cdc25e3fce6dec01b0dccc0eb86fda
+      description: 'Chaves: seqNumber (Edm.Int64), startDate (Edm.DateTime), userId (Edm.String). Execute Listar
+        para preencher automaticamente key_EmpJob. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/EmpJob'
+    method: GET
+    meta:
+      id: req_14d6c81595da58500254549b15f96ecc
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: seqNumber eq 0L and startDate eq datetime'2000-01-01T00:00:00' and userId eq 'REPLACE_ME'
+      disabled: false
+  - name: Cargo e estrutura por usuario
+    url: '{{ _.base_url }}/odata/v2/EmpJob'
+    method: GET
+    meta:
+      id: req_f7a22f4b1c2b384aeae0d4cdb39a3bdb
+      description: ''
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: userId eq '{{ _.user_id }}'
+      disabled: false
+    - name: $select
+      value: userId,managerId,jobTitle,company,location,startDate,seqNumber
+      disabled: false
+  - name: Subordinados do gestor
+    url: '{{ _.base_url }}/odata/v2/EmpJob'
+    method: GET
+    meta:
+      id: req_a83066328fa7a6dc4539c2b54c58d455
+      description: ''
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: managerId eq '{{ _.manager_id }}' and userId ne '{{ _.user_id }}'
+      disabled: false
+    - name: $select
+      value: userId,managerId,jobTitle,userNav/displayName,userNav/email
+      disabled: false
+    - name: $expand
+      value: userNav
+      disabled: false
+- name: FOCompany
+  meta:
+    id: fld_2a4e70b7d06cf01492db83238165ba4b
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/FOCompany'
+    method: GET
+    meta:
+      id: req_578e91d977e415be767cf18cc14f1c78
+      description: 'Chaves: externalCode (Edm.String), startDate (Edm.DateTime). Execute Listar para preencher automaticamente
+        key_FOCompany. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: externalCode,startDate,country,createdBy,createdDateTime,createdOn,currency,defaultLocation,defaultPayGroup,description
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"externalCode\": \"Edm.String\"\
+        , \"startDate\": \"Edm.DateTime\"};\nif (first && Object.keys(types).length && Object.keys(types).every(k\
+        \ => first[k] !== undefined && first[k] !== null)) {\n  const literal = (type, value) => {\n    if (type\
+        \ === 'Edm.String') return \"'\" + String(value).replaceAll(\"'\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime'\
+        \ || type === 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\\
+        d{4})?\\)\\/$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z', type\
+        \ === 'Edm.DateTime' ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset')\
+        \ + \"'\" + iso + \"'\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return\
+        \ String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n\
+        \  };\n  insomnia.environment.set('key_FOCompany', Object.entries(types).map(([k,t]) => k + '=' + literal(t,first[k])).join(','));\n\
+        }\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url', data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/FOCompany'
+    method: GET
+    meta:
+      id: req_842d55b3f8fba5df0d587e9897dc4e2c
+      description: 'Chaves: externalCode (Edm.String), startDate (Edm.DateTime). Execute Listar para preencher automaticamente
+        key_FOCompany. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: externalCode,startDate,country,createdBy,createdDateTime,createdOn,currency,defaultLocation,defaultPayGroup,description
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/FOCompany({{ _.key_FOCompany }})'
+    method: GET
+    meta:
+      id: req_b1c514b369eed51de231e8d1003532e6
+      description: 'Chaves: externalCode (Edm.String), startDate (Edm.DateTime). Execute Listar para preencher automaticamente
+        key_FOCompany. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/FOCompany'
+    method: GET
+    meta:
+      id: req_a799dfeb1cb59e2947c1e1dffe71c277
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: externalCode eq 'REPLACE_ME' and startDate eq datetime'2000-01-01T00:00:00'
+      disabled: false
+  - name: Empresa por codigo
+    url: '{{ _.base_url }}/odata/v2/FOCompany'
+    method: GET
+    meta:
+      id: req_f85066391fa598cfdc94012bafff9a01
+      description: ''
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: externalCode eq '{{ _.company_code }}'
+      disabled: false
+- name: FOLocation
+  meta:
+    id: fld_6b1ea422009dc3239f62975bd784e994
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/FOLocation'
+    method: GET
+    meta:
+      id: req_b39a0a762c7c46c70351b31d011dc74e
+      description: 'Chaves: externalCode (Edm.String), startDate (Edm.DateTime). Execute Listar para preencher automaticamente
+        key_FOLocation. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: externalCode,startDate,addressAddress1,addressAddress10,addressAddress11,addressAddress2,addressAddress3,addressAddress4,addressAddress5,addressAddress6
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"externalCode\": \"Edm.String\"\
+        , \"startDate\": \"Edm.DateTime\"};\nif (first && Object.keys(types).length && Object.keys(types).every(k\
+        \ => first[k] !== undefined && first[k] !== null)) {\n  const literal = (type, value) => {\n    if (type\
+        \ === 'Edm.String') return \"'\" + String(value).replaceAll(\"'\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime'\
+        \ || type === 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\\
+        d{4})?\\)\\/$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z', type\
+        \ === 'Edm.DateTime' ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset')\
+        \ + \"'\" + iso + \"'\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return\
+        \ String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n\
+        \  };\n  insomnia.environment.set('key_FOLocation', Object.entries(types).map(([k,t]) => k + '=' + literal(t,first[k])).join(','));\n\
+        }\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url', data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/FOLocation'
+    method: GET
+    meta:
+      id: req_1214ed7afedd994ecca8f00cc4798cc9
+      description: 'Chaves: externalCode (Edm.String), startDate (Edm.DateTime). Execute Listar para preencher automaticamente
+        key_FOLocation. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: externalCode,startDate,addressAddress1,addressAddress10,addressAddress11,addressAddress2,addressAddress3,addressAddress4,addressAddress5,addressAddress6
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/FOLocation({{ _.key_FOLocation }})'
+    method: GET
+    meta:
+      id: req_158415308e4255157fd56442a8f0f130
+      description: 'Chaves: externalCode (Edm.String), startDate (Edm.DateTime). Execute Listar para preencher automaticamente
+        key_FOLocation. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/FOLocation'
+    method: GET
+    meta:
+      id: req_bf499e3cd3022614189f4add67cf1a24
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: externalCode eq 'REPLACE_ME' and startDate eq datetime'2000-01-01T00:00:00'
+      disabled: false
+  - name: Local por codigo
+    url: '{{ _.base_url }}/odata/v2/FOLocation'
+    method: GET
+    meta:
+      id: req_7446a455766775af97dda8964fb269e0
+      description: ''
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: externalCode eq '{{ _.location_code }}'
+      disabled: false
+- name: AutoDelegateDetail
+  meta:
+    id: fld_d476742e2aecdb2b6218ef1fffbada0e
+    description: ''
+  children:
+  - name: Delegacoes recebidas
+    url: '{{ _.base_url }}/odata/v2/AutoDelegateDetail'
+    method: GET
+    meta:
+      id: req_7f04e03e8a7c91354328b12750b29a7c
+      description: ''
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: delegatee eq '{{ _.delegatee_id }}'
+      disabled: false
+    - name: $select
+      value: AutoDelegateConfig_delegator
+      disabled: false
+- name: AutoDelegateConfig
+  meta:
+    id: fld_1b47fb087820b3065e9370be838d1dad
+    description: ''
+  children:
+  - name: Configuracao do delegador
+    url: '{{ _.base_url }}/odata/v2/AutoDelegateConfig'
+    method: GET
+    meta:
+      id: req_3a6ccb05bb3c2864ef22548800be0698
+      description: ''
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: delegator eq '{{ _.delegator_id }}'
+      disabled: false
+    - name: $select
+      value: delegator,delegationStatus,startTime,endTime,delegatorNav/displayName
+      disabled: false
+    - name: $expand
+      value: delegatorNav
+      disabled: false
+environments:
+  name: Base Environment
+  meta:
+    id: env_3afd1c94af640c526599de312844f457
+  data:
+    next_page_url: ''
+    user_email: user@example.com
+    manager_id: MANAGER_ID
+    delegator_id: DELEGATOR_ID
+    delegatee_id: DELEGATEE_ID
+    key_Photo: photoType=0,userId='REPLACE_ME'
+    key_User: userId='REPLACE_ME'
+    key_EmpJob: seqNumber=0L,startDate=datetime'2000-01-01T00:00:00',userId='REPLACE_ME'
+    key_FOCompany: externalCode='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_FOLocation: externalCode='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'

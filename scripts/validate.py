@@ -30,9 +30,9 @@ def validate():
             id_=n['meta']['id']
             assert id_ not in ids, 'Duplicate ID: '+id_
             ids.add(id_)
+            for kind,code in n.get('scripts',{}).items(): scripts[code]=kind
             if 'method' in n:
                 total+=1
-                for kind,code in n.get('scripts',{}).items(): scripts[code]=kind
                 if n['name'].startswith('Conectar —'): fixtures['connect']=n['scripts']['afterResponse']
                 if n['name']=='01 — Token BTP': fixtures['btp']=n['scripts']['afterResponse']
                 if n['name']=='02 — Token SuccessFactors via Destination': fixtures['destination']=n['scripts']['afterResponse']
@@ -51,13 +51,19 @@ def validate():
         assert not forbidden.search(text), 'Instance-specific content: '+name
         doc=yaml.safe_load(text)
         validator.validate(doc)
+        if name in lite_summary['files']:
+            runtime=(ROOT/'scripts/insomnia/setup-runtime.js').read_text(encoding='utf-8')
+            assert doc['scripts']['preRequest'].startswith(runtime)
+            assert doc['scripts']['afterResponse'].startswith(runtime)
+            assert sum(item.get('name')=='Setup' for item in doc['collection'])==1
+        for kind,code in doc.get('scripts',{}).items(): scripts[code]=kind
         for obj in [doc['meta'],doc['environments']['meta']]:
             assert obj['id'] not in ids
             ids.add(obj['id'])
         env=dict(global_env,**doc['environments']['data'])
         for key,value in env.items():
             if any(s in key for s in ('token','secret','saml_assertion','sf_company_id','sf_client_id','btp_client_id','destination_service_url')):
-                assert value=='', 'Credential/configuration must be blank: '+key
+                assert value=='' or key.endswith('_expires_at') and value==0, 'Credential/configuration must be blank: '+key
         visit(doc['collection'],env)
     assert total==summary['requests']+lite_summary['requests']
     assert len(files)==lite_summary['collections']==1

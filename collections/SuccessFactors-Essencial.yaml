@@ -5,6 +5,280 @@ meta:
   id: wrk_3afd1c94af640c526599de312844f457
   description: 'Colecao leve: autenticacao, diagnostico e consultas principais. Selecione o ambiente global SuccessFactors.'
 collection:
+- name: Setup
+  meta:
+    id: fld_3d5f7dbebcca030c90ef2f00127eb0b6
+    description: Configuracao nativa por cliente; selecione um Environment privado. Etapas CIS/CF sao opcionais.
+  children:
+  - name: 01 — Conectar BTP e listar Destinations da subconta
+    meta:
+      id: fld_1988a90660eae24718294a4256709ed4
+      description: Use destination_service_key ou as quatro variaveis BTP. Resultado resumido em setup_destinations_subaccount.
+    environment:
+      setup_action: destinations-subaccount
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_1988a90660eae24718294a4256709ed4
+        description: Use destination_service_key ou as quatro variaveis BTP. Resultado resumido em setup_destinations_subaccount.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: 02 — Listar Destinations da instancia
+    meta:
+      id: fld_8c8640e20d9976bf486bbba19c2cc9b4
+      description: Resultado em setup_destinations_instance. A resolucao por nome prioriza a instancia quando ha
+        nomes repetidos.
+    environment:
+      setup_action: destinations-instance
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_8c8640e20d9976bf486bbba19c2cc9b4
+        description: Resultado em setup_destinations_instance. A resolucao por nome prioriza a instancia quando
+          ha nomes repetidos.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: 03 — Aplicar Destination selecionada
+    meta:
+      id: fld_af589b073909fcb0456dcfe2541cc1e1
+      description: Preencha destination_name. Salva URL, autenticacao, tokens e habilita renovacao automatica no
+        Environment ativo.
+    environment:
+      setup_action: destination
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_af589b073909fcb0456dcfe2541cc1e1
+        description: Preencha destination_name. Salva URL, autenticacao, tokens e habilita renovacao automatica
+          no Environment ativo.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: 04 — Consultar metadata e entidades
+    meta:
+      id: fld_8757e4f9da97fdf3af6a337bd0c409cb
+      description: Usa setup_api_path. Salva apenas os nomes das EntitySets em setup_entities. As consultas de negocio
+        existentes continuam sendo OData v2.
+    environment:
+      setup_action: metadata
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_8757e4f9da97fdf3af6a337bd0c409cb
+        description: Usa setup_api_path. Salva apenas os nomes das EntitySets em setup_entities. As consultas de
+          negocio existentes continuam sendo OData v2.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: Consultar entidade selecionada
+    meta:
+      id: fld_58ad6aeee77fcf898d8ecd65481c522e
+      description: Opcional. Preencha entity_name a partir de setup_entities. GET generico sobre setup_api_path,
+        sem adaptar schemas, filtros ou paginacao entre protocolos.
+    environment:
+      setup_action: entity
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_58ad6aeee77fcf898d8ecd65481c522e
+        description: Opcional. Preencha entity_name a partir de setup_entities. GET generico sobre setup_api_path,
+          sem adaptar schemas, filtros ou paginacao entre protocolos.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: '05 — CIS: consultar Global Account da credencial'
+    meta:
+      id: fld_2f4b457a5f02e1602b6be12d16e7e137
+      description: Opcional. Requer cis_service_key (plano central) ou variaveis CIS. Nao lista todas as Global
+        Accounts de um login humano.
+    environment:
+      setup_action: cis-global
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_2f4b457a5f02e1602b6be12d16e7e137
+        description: Opcional. Requer cis_service_key (plano central) ou variaveis CIS. Nao lista todas as Global
+          Accounts de um login humano.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: '06 — CIS: listar subcontas acessiveis'
+    meta:
+      id: fld_77d66f928d24aa3c683732d71f131d04
+      description: Opcional. Salva setup_subaccounts. Escolha subaccount_guid no Environment.
+    environment:
+      setup_action: cis-subaccounts
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_77d66f928d24aa3c683732d71f131d04
+        description: Opcional. Salva setup_subaccounts. Escolha subaccount_guid no Environment.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: '07 — CIS: aplicar subconta e regiao'
+    meta:
+      id: fld_915c3fffffb4767b8272338572884014
+      description: Opcional. Busca subaccount_guid. Guarda a regiao retornada, sem montar hosts por substituicao
+        de BR10/US10/EU10.
+    environment:
+      setup_action: cis-subaccount
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_915c3fffffb4767b8272338572884014
+        description: Opcional. Busca subaccount_guid. Guarda a regiao retornada, sem montar hosts por substituicao
+          de BR10/US10/EU10.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: '08 — CF: descobrir endpoints OAuth'
+    meta:
+      id: fld_e3e2e2aed8f7a027a5ff5b1a76bfb828
+      description: Opcional. Configure cf_api_url da subconta/regiao. Descobre os links de login; nao realiza SSO
+        pelo script.
+    environment:
+      setup_action: cf-info
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_e3e2e2aed8f7a027a5ff5b1a76bfb828
+        description: Opcional. Configure cf_api_url da subconta/regiao. Descobre os links de login; nao realiza
+          SSO pelo script.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: '09 — CF: login OAuth2 nativo e organizacoes'
+    meta:
+      id: fld_1e13e2d9247af1951850d4eaf1bea76f
+      description: Opcional. Configure o cliente OAuth registrado e use Auth > Fetch Tokens no Insomnia. Redirecionamento
+        e permissoes dependem do IdP. Se o SDK nao expuser o token, copie-o para cf_access_token.
+    environment:
+      setup_action: cf-native-login
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_1e13e2d9247af1951850d4eaf1bea76f
+        description: Opcional. Configure o cliente OAuth registrado e use Auth > Fetch Tokens no Insomnia. Redirecionamento
+          e permissoes dependem do IdP. Se o SDK nao expuser o token, copie-o para cf_access_token.
+      authentication:
+        type: oauth2
+        grantType: authorization_code
+        authorizationUrl: '{{ _.cf_authorization_url }}'
+        accessTokenUrl: '{{ _.cf_token_url }}'
+        clientId: '{{ _.cf_oauth_client_id }}'
+        clientSecret: '{{ _.cf_oauth_client_secret }}'
+        redirectUrl: '{{ _.cf_oauth_redirect_url }}'
+        usePkce: true
+        useDefaultBrowser: true
+      headers: []
+      parameters: []
+  - name: '10 — CF: listar organizacoes'
+    meta:
+      id: fld_bc039482579db9df0b4bd648d25e6f24
+      description: Opcional. Usa cf_access_token. Escolha cf_org_guid a partir de setup_cf_orgs.
+    environment:
+      setup_action: cf-orgs
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_bc039482579db9df0b4bd648d25e6f24
+        description: Opcional. Usa cf_access_token. Escolha cf_org_guid a partir de setup_cf_orgs.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: '11 — CF: listar spaces'
+    meta:
+      id: fld_1740eb951406be8985e8ee43a9f9ea08
+      description: Opcional. Escolha cf_space_guid a partir de setup_cf_spaces.
+    environment:
+      setup_action: cf-spaces
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_1740eb951406be8985e8ee43a9f9ea08
+        description: Opcional. Escolha cf_space_guid a partir de setup_cf_spaces.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: '12 — CF: descobrir instancias Destination'
+    meta:
+      id: fld_fc11de0474722468fb7054fd2a5a5055
+      description: Opcional. Filtra os planos do offering destination no space selecionado. Escolha cf_instance_guid.
+    environment:
+      setup_action: cf-instances
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_fc11de0474722468fb7054fd2a5a5055
+        description: Opcional. Filtra os planos do offering destination no space selecionado. Escolha cf_instance_guid.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: '13 — CF: listar service keys existentes'
+    meta:
+      id: fld_6893843956eeefedf2a6c5aa86747f4b
+      description: Opcional. Consulta somente keys da instancia selecionada. Escolha cf_binding_guid. Nao cria nem
+        modifica recursos BTP.
+    environment:
+      setup_action: cf-bindings
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_6893843956eeefedf2a6c5aa86747f4b
+        description: Opcional. Consulta somente keys da instancia selecionada. Escolha cf_binding_guid. Nao cria
+          nem modifica recursos BTP.
+      authentication: {}
+      headers: []
+      parameters: []
+  - name: '14 — CF: importar service key selecionada'
+    meta:
+      id: fld_900dbbaa2f2567c0bb1d0df750d89ef2
+      description: Opcional. Requer permissao para ler credenciais. Salva somente os campos de conexao no Environment
+        privado ativo. Depois execute 01 e 03.
+    environment:
+      setup_action: cf-key
+    children:
+    - name: Executar
+      url: '{{ _.base_url }}'
+      method: GET
+      meta:
+        id: req_900dbbaa2f2567c0bb1d0df750d89ef2
+        description: Opcional. Requer permissao para ler credenciais. Salva somente os campos de conexao no Environment
+          privado ativo. Depois execute 01 e 03.
+      authentication: {}
+      headers: []
+      parameters: []
 - name: 00 — Autenticacao
   meta:
     id: fld_625141baee2fc7a0caed6999693a2686
@@ -146,6 +420,8 @@ collection:
       - name: assertion
         value: '{{ _.saml_assertion }}'
         disabled: false
+  environment:
+    setup_skip_refresh: true
 - name: Metadata XML
   url: '{{ _.base_url }}/odata/v2/$metadata'
   method: GET
@@ -973,3 +1249,347 @@ environments:
     key_EmpJob: seqNumber=0L,startDate=datetime'2000-01-01T00:00:00',userId='REPLACE_ME'
     key_FOCompany: externalCode='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
     key_FOLocation: externalCode='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+scripts:
+  preRequest: "// Embedded into native Insomnia scripts at build time. No plugin or local require.\nconst SFSetup\
+    \ = (() => {\n  const URLClass = require('url').URL;\n  const scope = insomnia.environment.get('setup_scope')\
+    \ || insomnia.globals.get('setup_scope') || 'collection';\n  if (!['collection', 'global'].includes(scope))\
+    \ throw new Error('setup_scope deve ser collection ou global');\n  const store = scope === 'global' ? insomnia.globals\
+    \ : insomnia.environment;\n  const get = key => store.get(key);\n  const put = (key, value) => store.set(key,\
+    \ value);\n  const enabled = value => value === true || value === 'true';\n  const required = key => {\n   \
+    \ const value = get(key);\n    if (value === undefined || value === null || String(value).trim() === '') throw\
+    \ new Error('Preencha ' + key + ' no Environment privado ativo');\n    return String(value).trim();\n  };\n\
+    \  function guard() {\n    if (!enabled(get('setup_private_environment'))) throw new Error('Crie e selecione\
+    \ um Environment PRIVADO; defina setup_private_environment=true nele. O script nativo nao consegue verificar\
+    \ isPrivate.');\n  }\n  function url(value) {\n    const parsed = new URLClass(String(value));\n    if (parsed.protocol\
+    \ !== 'https:' || parsed.username || parsed.password || parsed.hash) throw new Error('Use uma URL HTTPS sem\
+    \ credenciais ou fragmento');\n    return parsed;\n  }\n  const base = value => url(value).toString().replace(/\\\
+    /$/, '');\n  function join(root, path) { return base(root) + '/' + path.replace(/^\\//, ''); }\n  function json(value)\
+    \ { return typeof value === 'string' ? JSON.parse(value) : value; }\n  const readArray = key => { const value\
+    \ = get(key); return value ? json(value) : []; };\n  function status(response, label) {\n    if (response.code\
+    \ < 200 || response.code >= 300) {\n      const hint = response.code === 403 ? ' Confira escopos e papeis desta\
+    \ credencial.' : response.code === 401 ? ' Renove a sessao ou confira as credenciais.' : '';\n      throw new\
+    \ Error(label + ': HTTP ' + response.code + '.' + hint);\n    }\n  }\n  async function send(request, label)\
+    \ {\n    const response = await new Promise((resolve, reject) => insomnia.sendRequest(request, (error, result)\
+    \ => error ? reject(new Error(label + ': falha de transporte')) : resolve(result)));\n    status(response, label);\n\
+    \    return response.json();\n  }\n  function expiry(token, seconds) {\n    const duration = Number(seconds);\n\
+    \    if (Number.isFinite(duration) && duration > 0) return Date.now() + duration * 1000;\n    try {\n      const\
+    \ payload = String(token).split('.')[1];\n      const normalized = payload.replace(/-/g, '+').replace(/_/g,\
+    \ '/');\n      const claims = JSON.parse(require('atob')(normalized.padEnd(Math.ceil(normalized.length / 4)\
+    \ * 4, '=')));\n      return Number(claims.exp) > 0 ? Number(claims.exp) * 1000 : 0;\n    } catch { return 0;\
+    \ }\n  }\n  const fresh = (token, until) => Boolean(token) && Number(until) > Date.now() + 60000;\n  function\
+    \ importKey(kind, supplied) {\n    const raw = supplied || get(kind === 'cis' ? 'cis_service_key' : 'destination_service_key');\n\
+    \    if (!raw) return;\n    let credentials;\n    try { const data = json(raw); credentials = data.credentials\
+    \ || data; }\n    catch { throw new Error('Service key deve ser JSON valido'); }\n    const c = credentials;\n\
+    \    if (kind !== 'cis' && get('subaccount_guid') && (c.subaccountid || c.uaa && c.uaa.subaccountid) && get('subaccount_guid')\
+    \ !== (c.subaccountid || c.uaa.subaccountid)) throw new Error('Service key pertence a outra subconta. Confira\
+    \ a selecao.');\n    const uaa = c.uaa || c;\n    const tokenUrl = join(uaa.url || c.url, '/oauth/token');\n\
+    \    const fields = kind === 'cis'\n      ? {cis_token_url: tokenUrl, cis_client_id: uaa.clientid, cis_client_secret:\
+    \ uaa.clientsecret, cis_accounts_url: base(c.endpoints && c.endpoints.accounts_service_url)}\n      : {btp_token_url:\
+    \ tokenUrl, btp_client_id: uaa.clientid, btp_client_secret: uaa.clientsecret, destination_service_url: base(c.uri)};\n\
+    \    if (Object.values(fields).some(v => !v)) throw new Error('Service key incompleta para ' + kind);\n    const\
+    \ changed = Object.entries(fields).some(([k, v]) => get(k) !== v);\n    Object.entries(fields).forEach(([k,\
+    \ v]) => put(k, v));\n    if (supplied && kind !== 'cis') put('destination_service_key', '');\n    if (changed)\
+    \ {\n      put(kind === 'cis' ? 'cis_access_token' : 'btp_access_token', '');\n      put(kind === 'cis' ? 'cis_token_expires_at'\
+    \ : 'btp_token_expires_at', 0);\n      if (kind !== 'cis') { put('destination_expires_at', 0); put('access_token',\
+    \ ''); put('setup_enabled', false); }\n    }\n  }\n  async function oauth(kind, force = false) {\n    const\
+    \ prefix = kind === 'cis' ? 'cis' : 'btp';\n    const tokenKey = prefix === 'cis' ? 'cis_access_token' : 'btp_access_token';\n\
+    \    const expiresKey = prefix + '_token_expires_at';\n    const context = JSON.stringify([get(prefix + '_token_url'),\
+    \ get(prefix + '_client_id')]);\n    if (!force && get(prefix + '_token_context') === context && fresh(get(tokenKey),\
+    \ get(expiresKey))) return get(tokenKey);\n    const endpoint = base(required(prefix + '_token_url'));\n   \
+    \ const response = await send({url: endpoint, method: 'POST',\n      header: {'Content-Type': 'application/x-www-form-urlencoded',\
+    \ Accept: 'application/json'},\n      auth: {type: 'basic', basic: [{key: 'username', value: required(prefix\
+    \ + '_client_id')}, {key: 'password', value: required(prefix + '_client_secret')}]},\n      body: {mode: 'urlencoded',\
+    \ urlencoded: [{key: 'grant_type', value: 'client_credentials'}]}}, 'OAuth ' + prefix);\n    if (!response.access_token)\
+    \ throw new Error('OAuth nao retornou access_token');\n    const until = expiry(response.access_token, response.expires_in);\n\
+    \    if (until && until <= Date.now()) throw new Error('OAuth retornou token expirado');\n    put(tokenKey,\
+    \ response.access_token);\n    put(expiresKey, until);\n    put(prefix + '_token_context', context);\n    return\
+    \ response.access_token;\n  }\n  function destinationContext() { return JSON.stringify([get('destination_service_url'),\
+    \ get('destination_name'), get('btp_client_id'), get('destination_user_token') || '']); }\n  async function\
+    \ destinationHeaders() {\n    const headers = {Authorization: 'Bearer ' + await oauth('btp'), Accept: 'application/json'};\n\
+    \    if (get('destination_user_token')) headers['X-User-Token'] = get('destination_user_token');\n    return\
+    \ headers;\n  }\n  function applyDestination(data) {\n    const config = data.destinationConfiguration;\n  \
+    \  if (!config || !config.URL) throw new Error('Resposta sem destinationConfiguration.URL');\n    if (config.ProxyType\
+    \ && config.ProxyType !== 'Internet') throw new Error('Esta collection usa conexao direta Internet. OnPremise/PrivateLink\
+    \ exige proxy apropriado; configuracao nao foi aplicada.');\n    const type = config.Authentication || 'NoAuthentication';\n\
+    \    const selected = (data.authTokens || []).find(t => !t.error && (t.value || t.http_header && t.http_header.value));\n\
+    \    let authorization = '';\n    if (type !== 'NoAuthentication') {\n      if (!selected) throw new Error('Destination\
+    \ sem authToken utilizavel. Fluxos com usuario exigem destination_user_token e permissoes adequadas.');\n  \
+    \    const header = selected.http_header;\n      if (header && String(header.key).toLowerCase() === 'authorization')\
+    \ authorization = header.value;\n      else if (selected.type && selected.value) authorization = selected.type\
+    \ + ' ' + selected.value;\n      else throw new Error('Destination nao retornou um header Authorization utilizavel');\n\
+    \      if (!/^(Bearer|Basic)\\s+\\S+/i.test(authorization)) throw new Error('Tipo de autorizacao nao suportado\
+    \ pela collection');\n    }\n    const original = url(config.URL);\n    if (original.search) throw new Error('Destination\
+    \ URL com query string: use uma URL base de servico');\n    let endpoint = original.toString().replace(/\\/$/,\
+    \ '');\n    let apiPath = get('setup_api_path') || '/odata/v2';\n    const match = endpoint.match(/^(.*)(\\\
+    /odata\\/v[24](?:\\/.*)?)$/i);\n    if (match) { endpoint = match[1]; apiPath = match[2]; }\n    const until\
+    \ = selected ? expiry(selected.value, selected.expires_in) : Date.now() + 3600000;\n    if (until && until <=\
+    \ Date.now()) throw new Error('Destination retornou token expirado');\n    // Publish related state together\
+    \ only after validating the entire response.\n    put('base_url', endpoint);\n    put('setup_api_path', apiPath);\n\
+    \    put('destination_authentication', type);\n    put('destination_authorization', authorization);\n    put('access_token',\
+    \ /^Bearer\\s/i.test(authorization) ? authorization.replace(/^Bearer\\s+/i, '') : '');\n    put('destination_expires_at',\
+    \ until);\n    put('destination_token_context', destinationContext());\n    put('setup_enabled', true);\n  }\n\
+    \  async function ensureDestination(force = false) {\n    if (!force && get('destination_token_context') ===\
+    \ destinationContext() && Number(get('destination_expires_at')) > Date.now() + 60000) return;\n    const endpoint\
+    \ = join(required('destination_service_url'), '/destination-configuration/v1/destinations/' + encodeURIComponent(required('destination_name')));\n\
+    \    const data = await send({url: endpoint, method: 'GET', header: await destinationHeaders()}, 'Resolver Destination');\n\
+    \    applyDestination(data);\n  }\n  function applyAuth(header) {\n    insomnia.request.auth.update([], 'noauth');\n\
+    \    insomnia.request.removeHeader('Authorization');\n    if (header) insomnia.request.addHeader({key: 'Authorization',\
+    \ value: header});\n  }\n  function cfToken() {\n    const token = required('cf_access_token').replace(/^Bearer\\\
+    s+/i, '');\n    const until = expiry(token);\n    if (until && until <= Date.now() + 60000) throw new Error('Sessao\
+    \ Cloud Foundry expirada. Renove via OAuth2 nativo ou atualize cf_access_token.');\n    return token;\n  }\n\
+    \  async function collect(data, root, headers) {\n    const rows = Array.isArray(data) ? data : data.resources\
+    \ || data.value || [];\n    if (!Array.isArray(rows)) throw new Error('Resposta de lista inesperada');\n   \
+    \ const result = [...rows];\n    let next = data.pagination && data.pagination.next && data.pagination.next.href;\n\
+    \    const seen = new Set();\n    while (next) {\n      const endpoint = new URLClass(next, base(root) + '/');\n\
+    \      if (endpoint.origin !== url(root).origin || seen.has(endpoint.href) || seen.size >= 100) throw new Error('Paginacao\
+    \ invalida ou fora do host da API');\n      seen.add(endpoint.href);\n      data = await send({url: endpoint.href,\
+    \ method: 'GET', header: headers}, 'Proxima pagina');\n      result.push(...(data.resources || data.value ||\
+    \ []));\n      next = data.pagination && data.pagination.next && data.pagination.next.href;\n    }\n    return\
+    \ result;\n  }\n  async function prepare(action) {\n    guard();\n    let endpoint, header = {};\n    if (action.startsWith('cis-'))\
+    \ {\n      importKey('cis');\n      header.Authorization = 'Bearer ' + await oauth('cis');\n      endpoint =\
+    \ join(required('cis_accounts_url'), '/accounts/v1/' + (action === 'cis-global' ? 'globalAccount' : action ===\
+    \ 'cis-subaccounts' ? 'subaccounts' : 'subaccounts/' + encodeURIComponent(required('subaccount_guid'))));\n\
+    \    } else if (action.startsWith('cf-')) {\n      const root = required('cf_api_url');\n      if (action !==\
+    \ 'cf-info' && action !== 'cf-native-login') header.Authorization = 'Bearer ' + cfToken();\n      const path\
+    \ = {\n        'cf-info': '/v3/info', 'cf-native-login': '/v3/organizations', 'cf-orgs': '/v3/organizations',\n\
+    \        'cf-spaces': '/v3/spaces?organization_guids=' + encodeURIComponent(get('cf_org_guid') || ''),\n   \
+    \     'cf-bindings': '/v3/service_credential_bindings?type=key&service_instance_guids=' + encodeURIComponent(get('cf_instance_guid')\
+    \ || ''),\n        'cf-key': '/v3/service_credential_bindings/' + encodeURIComponent(get('cf_binding_guid')\
+    \ || '') + '/details'\n      }[action];\n      if (action === 'cf-spaces') required('cf_org_guid');\n      if\
+    \ (action === 'cf-bindings') required('cf_instance_guid');\n      if (action === 'cf-key') {\n        required('cf_binding_guid');\n\
+    \        if (!readArray('setup_cf_bindings').some(x => x.guid === get('cf_binding_guid') && x.instance_guid\
+    \ === get('cf_instance_guid'))) throw new Error('Liste e selecione uma service key da instancia escolhida antes\
+    \ de importar');\n      }\n      if (action === 'cf-instances') {\n        required('cf_space_guid');\n    \
+    \    const offerings = await collect(await send({url: join(root, '/v3/service_offerings?names=destination'),\
+    \ method: 'GET', header}, 'Service offerings'), root, header);\n        if (!offerings.length) throw new Error('Offering\
+    \ destination nao disponivel para a sessao CF');\n        const plans = await collect(await send({url: join(root,\
+    \ '/v3/service_plans?service_offering_guids=' + offerings.map(o => encodeURIComponent(o.guid)).join(',')), method:\
+    \ 'GET', header}, 'Service plans'), root, header);\n        if (!plans.length) throw new Error('Nenhum service\
+    \ plan Destination acessivel');\n        endpoint = join(root, '/v3/service_instances?space_guids=' + encodeURIComponent(required('cf_space_guid'))\
+    \ + '&service_plan_guids=' + plans.map(p => encodeURIComponent(p.guid)).join(','));\n      } else endpoint =\
+    \ join(root, path);\n    } else if (action === 'destinations-subaccount' || action === 'destinations-instance'\
+    \ || action === 'destination') {\n      importKey('destination');\n      header = await destinationHeaders();\n\
+    \      const path = action === 'destination' ? '/destinations/' + encodeURIComponent(required('destination_name'))\
+    \ : action === 'destinations-instance' ? '/instanceDestinations' : '/subaccountDestinations';\n      endpoint\
+    \ = join(required('destination_service_url'), '/destination-configuration/v1' + path);\n    } else if (action\
+    \ === 'metadata' || action === 'entity') {\n      await ensureDestination();\n      const entity = action ===\
+    \ 'entity' ? required('entity_name') : '$metadata';\n      if (action === 'entity' && !/^[A-Za-z_][A-Za-z0-9_.]*$/.test(entity))\
+    \ throw new Error('entity_name deve conter apenas o nome tecnico de uma entidade');\n      endpoint = join(required('base_url'),\
+    \ (get('setup_api_path') || '/odata/v2').replace(/\\/$/, '') + '/' + entity);\n      if (action === 'entity')\
+    \ endpoint += '?$top=' + encodeURIComponent(get('page_size') || '20');\n      header.Authorization = get('destination_authorization');\n\
+    \    } else throw new Error('Etapa Setup desconhecida');\n    insomnia.request.method = 'GET';\n    insomnia.request.url\
+    \ = endpoint;\n    if (action !== 'cf-native-login') applyAuth(header.Authorization);\n    insomnia.request.addHeader({key:\
+    \ 'Accept', value: action === 'metadata' ? 'application/xml' : 'application/json'});\n  }\n  async function\
+    \ complete(action) {\n    guard();\n    status(insomnia.response, action);\n    if (action === 'entity') return;\n\
+    \    if (action === 'metadata') {\n      const parsed = await require('xml2js').parseStringPromise(insomnia.response.text(),\
+    \ {explicitArray: false, tagNameProcessors: [require('xml2js').processors.stripPrefix]});\n      const found\
+    \ = new Set();\n      function visit(node) {\n        if (!node || typeof node !== 'object') return;\n     \
+    \   for (const [key, value] of Object.entries(node)) {\n          if (key === 'EntitySet') for (const entity\
+    \ of Array.isArray(value) ? value : [value]) if (entity.$ && entity.$.Name) found.add(entity.$.Name);\n    \
+    \      if (key !== '$') (Array.isArray(value) ? value : [value]).forEach(visit);\n        }\n      }\n     \
+    \ visit(parsed);\n      put('setup_entities', JSON.stringify([...found].sort()));\n      return;\n    }\n  \
+    \  const data = insomnia.response.json();\n    if (action === 'destination') return applyDestination(data);\n\
+    \    if (action === 'cf-info') {\n      const login = data.links && data.links.login && data.links.login.href;\n\
+    \      if (login) { put('cf_authorization_url', join(login, '/oauth/authorize')); put('cf_token_url', join(login,\
+    \ '/oauth/token')); }\n      return;\n    }\n    if (action === 'cf-key') return importKey('destination', data);\n\
+    \    if (action === 'cis-global') {\n      put('setup_global_accounts', JSON.stringify([{guid: data.guid, name:\
+    \ data.displayName, subdomain: data.subdomain}]));\n      if (data.guid) put('global_account_guid', data.guid);\n\
+    \      return;\n    }\n    if (action === 'cis-subaccount') {\n      if (data.region) put('btp_region', typeof\
+    \ data.region === 'string' ? data.region : data.region.name || '');\n      if (data.subdomain) put('subaccount_subdomain',\
+    \ data.subdomain);\n      return;\n    }\n    if (action === 'cf-native-login') {\n      const auth = insomnia.request.auth.toJSON();\n\
+    \      const entry = (auth.oauth2 || []).find(p => p.key === 'accessToken');\n      if (!entry || !entry.value)\
+    \ throw new Error('Token OAuth2 nao exposto pelo SDK. Copie o token obtido em Auth para cf_access_token do Environment\
+    \ privado e execute Listar organizacoes.');\n      put('cf_access_token', entry.value);\n    }\n    const isCF\
+    \ = action.startsWith('cf-');\n    const headers = isCF ? {Authorization: 'Bearer ' + cfToken()} : action.startsWith('cis-')\
+    \ ? {Authorization: 'Bearer ' + await oauth('cis')} : await destinationHeaders();\n    const root = isCF ? required('cf_api_url')\
+    \ : action.startsWith('cis-') ? required('cis_accounts_url') : required('destination_service_url');\n    const\
+    \ rows = await collect(data, root, headers);\n    if (action.startsWith('destinations-')) {\n      const level\
+    \ = action === 'destinations-instance' ? 'instance' : 'subaccount';\n      // Only non-sensitive display fields\
+    \ are retained, never passwords returned by list APIs.\n      put('setup_destinations_' + level, JSON.stringify(rows.map(d\
+    \ => ({name: d.Name, url: d.URL, authentication: d.Authentication, proxy: d.ProxyType}))));\n    } else if (action\
+    \ === 'cis-subaccounts') {\n      put('setup_subaccounts', JSON.stringify(rows.map(s => ({guid: s.guid, name:\
+    \ s.displayName, region: s.region, subdomain: s.subdomain}))));\n    } else {\n      const key = {'cf-native-login':\
+    \ 'setup_cf_orgs', 'cf-orgs': 'setup_cf_orgs', 'cf-spaces': 'setup_cf_spaces', 'cf-instances': 'setup_cf_instances',\
+    \ 'cf-bindings': 'setup_cf_bindings'}[action];\n      put(key, JSON.stringify(rows.map(r => ({guid: r.guid,\
+    \ name: r.name, instance_guid: r.relationships && r.relationships.service_instance && r.relationships.service_instance.data.guid}))));\n\
+    \    }\n  }\n  async function beforeBusiness() {\n    if (!enabled(get('setup_enabled'))) return;\n    guard();\n\
+    \    const oldBase = required('base_url');\n    await ensureDestination();\n    const current = String(insomnia.request.url);\n\
+    \    if (!current.startsWith(oldBase + '/') && current !== oldBase) throw new Error('URL fora da Destination\
+    \ ativa. Confira o Environment e a URL antes de enviar credenciais.');\n    if (get('setup_api_path') && get('setup_api_path')\
+    \ !== '/odata/v2' && current.startsWith(oldBase + '/odata/v2/')) throw new Error('Os modelos existentes sao\
+    \ OData v2. Para outro servico, use Setup > Consultar entidade selecionada; nao converta o protocolo apenas\
+    \ trocando a URL.');\n    insomnia.request.url = required('base_url') + current.slice(oldBase.length);\n   \
+    \ applyAuth(get('destination_authorization'));\n  }\n  return {prepare, complete, beforeBusiness};\n})();\n\n\
+    const action = insomnia.variables.get('setup_action');\nif (action) await SFSetup.prepare(action);\nelse if\
+    \ (!insomnia.variables.get('setup_skip_refresh')) await SFSetup.beforeBusiness();\n"
+  afterResponse: "// Embedded into native Insomnia scripts at build time. No plugin or local require.\nconst SFSetup\
+    \ = (() => {\n  const URLClass = require('url').URL;\n  const scope = insomnia.environment.get('setup_scope')\
+    \ || insomnia.globals.get('setup_scope') || 'collection';\n  if (!['collection', 'global'].includes(scope))\
+    \ throw new Error('setup_scope deve ser collection ou global');\n  const store = scope === 'global' ? insomnia.globals\
+    \ : insomnia.environment;\n  const get = key => store.get(key);\n  const put = (key, value) => store.set(key,\
+    \ value);\n  const enabled = value => value === true || value === 'true';\n  const required = key => {\n   \
+    \ const value = get(key);\n    if (value === undefined || value === null || String(value).trim() === '') throw\
+    \ new Error('Preencha ' + key + ' no Environment privado ativo');\n    return String(value).trim();\n  };\n\
+    \  function guard() {\n    if (!enabled(get('setup_private_environment'))) throw new Error('Crie e selecione\
+    \ um Environment PRIVADO; defina setup_private_environment=true nele. O script nativo nao consegue verificar\
+    \ isPrivate.');\n  }\n  function url(value) {\n    const parsed = new URLClass(String(value));\n    if (parsed.protocol\
+    \ !== 'https:' || parsed.username || parsed.password || parsed.hash) throw new Error('Use uma URL HTTPS sem\
+    \ credenciais ou fragmento');\n    return parsed;\n  }\n  const base = value => url(value).toString().replace(/\\\
+    /$/, '');\n  function join(root, path) { return base(root) + '/' + path.replace(/^\\//, ''); }\n  function json(value)\
+    \ { return typeof value === 'string' ? JSON.parse(value) : value; }\n  const readArray = key => { const value\
+    \ = get(key); return value ? json(value) : []; };\n  function status(response, label) {\n    if (response.code\
+    \ < 200 || response.code >= 300) {\n      const hint = response.code === 403 ? ' Confira escopos e papeis desta\
+    \ credencial.' : response.code === 401 ? ' Renove a sessao ou confira as credenciais.' : '';\n      throw new\
+    \ Error(label + ': HTTP ' + response.code + '.' + hint);\n    }\n  }\n  async function send(request, label)\
+    \ {\n    const response = await new Promise((resolve, reject) => insomnia.sendRequest(request, (error, result)\
+    \ => error ? reject(new Error(label + ': falha de transporte')) : resolve(result)));\n    status(response, label);\n\
+    \    return response.json();\n  }\n  function expiry(token, seconds) {\n    const duration = Number(seconds);\n\
+    \    if (Number.isFinite(duration) && duration > 0) return Date.now() + duration * 1000;\n    try {\n      const\
+    \ payload = String(token).split('.')[1];\n      const normalized = payload.replace(/-/g, '+').replace(/_/g,\
+    \ '/');\n      const claims = JSON.parse(require('atob')(normalized.padEnd(Math.ceil(normalized.length / 4)\
+    \ * 4, '=')));\n      return Number(claims.exp) > 0 ? Number(claims.exp) * 1000 : 0;\n    } catch { return 0;\
+    \ }\n  }\n  const fresh = (token, until) => Boolean(token) && Number(until) > Date.now() + 60000;\n  function\
+    \ importKey(kind, supplied) {\n    const raw = supplied || get(kind === 'cis' ? 'cis_service_key' : 'destination_service_key');\n\
+    \    if (!raw) return;\n    let credentials;\n    try { const data = json(raw); credentials = data.credentials\
+    \ || data; }\n    catch { throw new Error('Service key deve ser JSON valido'); }\n    const c = credentials;\n\
+    \    if (kind !== 'cis' && get('subaccount_guid') && (c.subaccountid || c.uaa && c.uaa.subaccountid) && get('subaccount_guid')\
+    \ !== (c.subaccountid || c.uaa.subaccountid)) throw new Error('Service key pertence a outra subconta. Confira\
+    \ a selecao.');\n    const uaa = c.uaa || c;\n    const tokenUrl = join(uaa.url || c.url, '/oauth/token');\n\
+    \    const fields = kind === 'cis'\n      ? {cis_token_url: tokenUrl, cis_client_id: uaa.clientid, cis_client_secret:\
+    \ uaa.clientsecret, cis_accounts_url: base(c.endpoints && c.endpoints.accounts_service_url)}\n      : {btp_token_url:\
+    \ tokenUrl, btp_client_id: uaa.clientid, btp_client_secret: uaa.clientsecret, destination_service_url: base(c.uri)};\n\
+    \    if (Object.values(fields).some(v => !v)) throw new Error('Service key incompleta para ' + kind);\n    const\
+    \ changed = Object.entries(fields).some(([k, v]) => get(k) !== v);\n    Object.entries(fields).forEach(([k,\
+    \ v]) => put(k, v));\n    if (supplied && kind !== 'cis') put('destination_service_key', '');\n    if (changed)\
+    \ {\n      put(kind === 'cis' ? 'cis_access_token' : 'btp_access_token', '');\n      put(kind === 'cis' ? 'cis_token_expires_at'\
+    \ : 'btp_token_expires_at', 0);\n      if (kind !== 'cis') { put('destination_expires_at', 0); put('access_token',\
+    \ ''); put('setup_enabled', false); }\n    }\n  }\n  async function oauth(kind, force = false) {\n    const\
+    \ prefix = kind === 'cis' ? 'cis' : 'btp';\n    const tokenKey = prefix === 'cis' ? 'cis_access_token' : 'btp_access_token';\n\
+    \    const expiresKey = prefix + '_token_expires_at';\n    const context = JSON.stringify([get(prefix + '_token_url'),\
+    \ get(prefix + '_client_id')]);\n    if (!force && get(prefix + '_token_context') === context && fresh(get(tokenKey),\
+    \ get(expiresKey))) return get(tokenKey);\n    const endpoint = base(required(prefix + '_token_url'));\n   \
+    \ const response = await send({url: endpoint, method: 'POST',\n      header: {'Content-Type': 'application/x-www-form-urlencoded',\
+    \ Accept: 'application/json'},\n      auth: {type: 'basic', basic: [{key: 'username', value: required(prefix\
+    \ + '_client_id')}, {key: 'password', value: required(prefix + '_client_secret')}]},\n      body: {mode: 'urlencoded',\
+    \ urlencoded: [{key: 'grant_type', value: 'client_credentials'}]}}, 'OAuth ' + prefix);\n    if (!response.access_token)\
+    \ throw new Error('OAuth nao retornou access_token');\n    const until = expiry(response.access_token, response.expires_in);\n\
+    \    if (until && until <= Date.now()) throw new Error('OAuth retornou token expirado');\n    put(tokenKey,\
+    \ response.access_token);\n    put(expiresKey, until);\n    put(prefix + '_token_context', context);\n    return\
+    \ response.access_token;\n  }\n  function destinationContext() { return JSON.stringify([get('destination_service_url'),\
+    \ get('destination_name'), get('btp_client_id'), get('destination_user_token') || '']); }\n  async function\
+    \ destinationHeaders() {\n    const headers = {Authorization: 'Bearer ' + await oauth('btp'), Accept: 'application/json'};\n\
+    \    if (get('destination_user_token')) headers['X-User-Token'] = get('destination_user_token');\n    return\
+    \ headers;\n  }\n  function applyDestination(data) {\n    const config = data.destinationConfiguration;\n  \
+    \  if (!config || !config.URL) throw new Error('Resposta sem destinationConfiguration.URL');\n    if (config.ProxyType\
+    \ && config.ProxyType !== 'Internet') throw new Error('Esta collection usa conexao direta Internet. OnPremise/PrivateLink\
+    \ exige proxy apropriado; configuracao nao foi aplicada.');\n    const type = config.Authentication || 'NoAuthentication';\n\
+    \    const selected = (data.authTokens || []).find(t => !t.error && (t.value || t.http_header && t.http_header.value));\n\
+    \    let authorization = '';\n    if (type !== 'NoAuthentication') {\n      if (!selected) throw new Error('Destination\
+    \ sem authToken utilizavel. Fluxos com usuario exigem destination_user_token e permissoes adequadas.');\n  \
+    \    const header = selected.http_header;\n      if (header && String(header.key).toLowerCase() === 'authorization')\
+    \ authorization = header.value;\n      else if (selected.type && selected.value) authorization = selected.type\
+    \ + ' ' + selected.value;\n      else throw new Error('Destination nao retornou um header Authorization utilizavel');\n\
+    \      if (!/^(Bearer|Basic)\\s+\\S+/i.test(authorization)) throw new Error('Tipo de autorizacao nao suportado\
+    \ pela collection');\n    }\n    const original = url(config.URL);\n    if (original.search) throw new Error('Destination\
+    \ URL com query string: use uma URL base de servico');\n    let endpoint = original.toString().replace(/\\/$/,\
+    \ '');\n    let apiPath = get('setup_api_path') || '/odata/v2';\n    const match = endpoint.match(/^(.*)(\\\
+    /odata\\/v[24](?:\\/.*)?)$/i);\n    if (match) { endpoint = match[1]; apiPath = match[2]; }\n    const until\
+    \ = selected ? expiry(selected.value, selected.expires_in) : Date.now() + 3600000;\n    if (until && until <=\
+    \ Date.now()) throw new Error('Destination retornou token expirado');\n    // Publish related state together\
+    \ only after validating the entire response.\n    put('base_url', endpoint);\n    put('setup_api_path', apiPath);\n\
+    \    put('destination_authentication', type);\n    put('destination_authorization', authorization);\n    put('access_token',\
+    \ /^Bearer\\s/i.test(authorization) ? authorization.replace(/^Bearer\\s+/i, '') : '');\n    put('destination_expires_at',\
+    \ until);\n    put('destination_token_context', destinationContext());\n    put('setup_enabled', true);\n  }\n\
+    \  async function ensureDestination(force = false) {\n    if (!force && get('destination_token_context') ===\
+    \ destinationContext() && Number(get('destination_expires_at')) > Date.now() + 60000) return;\n    const endpoint\
+    \ = join(required('destination_service_url'), '/destination-configuration/v1/destinations/' + encodeURIComponent(required('destination_name')));\n\
+    \    const data = await send({url: endpoint, method: 'GET', header: await destinationHeaders()}, 'Resolver Destination');\n\
+    \    applyDestination(data);\n  }\n  function applyAuth(header) {\n    insomnia.request.auth.update([], 'noauth');\n\
+    \    insomnia.request.removeHeader('Authorization');\n    if (header) insomnia.request.addHeader({key: 'Authorization',\
+    \ value: header});\n  }\n  function cfToken() {\n    const token = required('cf_access_token').replace(/^Bearer\\\
+    s+/i, '');\n    const until = expiry(token);\n    if (until && until <= Date.now() + 60000) throw new Error('Sessao\
+    \ Cloud Foundry expirada. Renove via OAuth2 nativo ou atualize cf_access_token.');\n    return token;\n  }\n\
+    \  async function collect(data, root, headers) {\n    const rows = Array.isArray(data) ? data : data.resources\
+    \ || data.value || [];\n    if (!Array.isArray(rows)) throw new Error('Resposta de lista inesperada');\n   \
+    \ const result = [...rows];\n    let next = data.pagination && data.pagination.next && data.pagination.next.href;\n\
+    \    const seen = new Set();\n    while (next) {\n      const endpoint = new URLClass(next, base(root) + '/');\n\
+    \      if (endpoint.origin !== url(root).origin || seen.has(endpoint.href) || seen.size >= 100) throw new Error('Paginacao\
+    \ invalida ou fora do host da API');\n      seen.add(endpoint.href);\n      data = await send({url: endpoint.href,\
+    \ method: 'GET', header: headers}, 'Proxima pagina');\n      result.push(...(data.resources || data.value ||\
+    \ []));\n      next = data.pagination && data.pagination.next && data.pagination.next.href;\n    }\n    return\
+    \ result;\n  }\n  async function prepare(action) {\n    guard();\n    let endpoint, header = {};\n    if (action.startsWith('cis-'))\
+    \ {\n      importKey('cis');\n      header.Authorization = 'Bearer ' + await oauth('cis');\n      endpoint =\
+    \ join(required('cis_accounts_url'), '/accounts/v1/' + (action === 'cis-global' ? 'globalAccount' : action ===\
+    \ 'cis-subaccounts' ? 'subaccounts' : 'subaccounts/' + encodeURIComponent(required('subaccount_guid'))));\n\
+    \    } else if (action.startsWith('cf-')) {\n      const root = required('cf_api_url');\n      if (action !==\
+    \ 'cf-info' && action !== 'cf-native-login') header.Authorization = 'Bearer ' + cfToken();\n      const path\
+    \ = {\n        'cf-info': '/v3/info', 'cf-native-login': '/v3/organizations', 'cf-orgs': '/v3/organizations',\n\
+    \        'cf-spaces': '/v3/spaces?organization_guids=' + encodeURIComponent(get('cf_org_guid') || ''),\n   \
+    \     'cf-bindings': '/v3/service_credential_bindings?type=key&service_instance_guids=' + encodeURIComponent(get('cf_instance_guid')\
+    \ || ''),\n        'cf-key': '/v3/service_credential_bindings/' + encodeURIComponent(get('cf_binding_guid')\
+    \ || '') + '/details'\n      }[action];\n      if (action === 'cf-spaces') required('cf_org_guid');\n      if\
+    \ (action === 'cf-bindings') required('cf_instance_guid');\n      if (action === 'cf-key') {\n        required('cf_binding_guid');\n\
+    \        if (!readArray('setup_cf_bindings').some(x => x.guid === get('cf_binding_guid') && x.instance_guid\
+    \ === get('cf_instance_guid'))) throw new Error('Liste e selecione uma service key da instancia escolhida antes\
+    \ de importar');\n      }\n      if (action === 'cf-instances') {\n        required('cf_space_guid');\n    \
+    \    const offerings = await collect(await send({url: join(root, '/v3/service_offerings?names=destination'),\
+    \ method: 'GET', header}, 'Service offerings'), root, header);\n        if (!offerings.length) throw new Error('Offering\
+    \ destination nao disponivel para a sessao CF');\n        const plans = await collect(await send({url: join(root,\
+    \ '/v3/service_plans?service_offering_guids=' + offerings.map(o => encodeURIComponent(o.guid)).join(',')), method:\
+    \ 'GET', header}, 'Service plans'), root, header);\n        if (!plans.length) throw new Error('Nenhum service\
+    \ plan Destination acessivel');\n        endpoint = join(root, '/v3/service_instances?space_guids=' + encodeURIComponent(required('cf_space_guid'))\
+    \ + '&service_plan_guids=' + plans.map(p => encodeURIComponent(p.guid)).join(','));\n      } else endpoint =\
+    \ join(root, path);\n    } else if (action === 'destinations-subaccount' || action === 'destinations-instance'\
+    \ || action === 'destination') {\n      importKey('destination');\n      header = await destinationHeaders();\n\
+    \      const path = action === 'destination' ? '/destinations/' + encodeURIComponent(required('destination_name'))\
+    \ : action === 'destinations-instance' ? '/instanceDestinations' : '/subaccountDestinations';\n      endpoint\
+    \ = join(required('destination_service_url'), '/destination-configuration/v1' + path);\n    } else if (action\
+    \ === 'metadata' || action === 'entity') {\n      await ensureDestination();\n      const entity = action ===\
+    \ 'entity' ? required('entity_name') : '$metadata';\n      if (action === 'entity' && !/^[A-Za-z_][A-Za-z0-9_.]*$/.test(entity))\
+    \ throw new Error('entity_name deve conter apenas o nome tecnico de uma entidade');\n      endpoint = join(required('base_url'),\
+    \ (get('setup_api_path') || '/odata/v2').replace(/\\/$/, '') + '/' + entity);\n      if (action === 'entity')\
+    \ endpoint += '?$top=' + encodeURIComponent(get('page_size') || '20');\n      header.Authorization = get('destination_authorization');\n\
+    \    } else throw new Error('Etapa Setup desconhecida');\n    insomnia.request.method = 'GET';\n    insomnia.request.url\
+    \ = endpoint;\n    if (action !== 'cf-native-login') applyAuth(header.Authorization);\n    insomnia.request.addHeader({key:\
+    \ 'Accept', value: action === 'metadata' ? 'application/xml' : 'application/json'});\n  }\n  async function\
+    \ complete(action) {\n    guard();\n    status(insomnia.response, action);\n    if (action === 'entity') return;\n\
+    \    if (action === 'metadata') {\n      const parsed = await require('xml2js').parseStringPromise(insomnia.response.text(),\
+    \ {explicitArray: false, tagNameProcessors: [require('xml2js').processors.stripPrefix]});\n      const found\
+    \ = new Set();\n      function visit(node) {\n        if (!node || typeof node !== 'object') return;\n     \
+    \   for (const [key, value] of Object.entries(node)) {\n          if (key === 'EntitySet') for (const entity\
+    \ of Array.isArray(value) ? value : [value]) if (entity.$ && entity.$.Name) found.add(entity.$.Name);\n    \
+    \      if (key !== '$') (Array.isArray(value) ? value : [value]).forEach(visit);\n        }\n      }\n     \
+    \ visit(parsed);\n      put('setup_entities', JSON.stringify([...found].sort()));\n      return;\n    }\n  \
+    \  const data = insomnia.response.json();\n    if (action === 'destination') return applyDestination(data);\n\
+    \    if (action === 'cf-info') {\n      const login = data.links && data.links.login && data.links.login.href;\n\
+    \      if (login) { put('cf_authorization_url', join(login, '/oauth/authorize')); put('cf_token_url', join(login,\
+    \ '/oauth/token')); }\n      return;\n    }\n    if (action === 'cf-key') return importKey('destination', data);\n\
+    \    if (action === 'cis-global') {\n      put('setup_global_accounts', JSON.stringify([{guid: data.guid, name:\
+    \ data.displayName, subdomain: data.subdomain}]));\n      if (data.guid) put('global_account_guid', data.guid);\n\
+    \      return;\n    }\n    if (action === 'cis-subaccount') {\n      if (data.region) put('btp_region', typeof\
+    \ data.region === 'string' ? data.region : data.region.name || '');\n      if (data.subdomain) put('subaccount_subdomain',\
+    \ data.subdomain);\n      return;\n    }\n    if (action === 'cf-native-login') {\n      const auth = insomnia.request.auth.toJSON();\n\
+    \      const entry = (auth.oauth2 || []).find(p => p.key === 'accessToken');\n      if (!entry || !entry.value)\
+    \ throw new Error('Token OAuth2 nao exposto pelo SDK. Copie o token obtido em Auth para cf_access_token do Environment\
+    \ privado e execute Listar organizacoes.');\n      put('cf_access_token', entry.value);\n    }\n    const isCF\
+    \ = action.startsWith('cf-');\n    const headers = isCF ? {Authorization: 'Bearer ' + cfToken()} : action.startsWith('cis-')\
+    \ ? {Authorization: 'Bearer ' + await oauth('cis')} : await destinationHeaders();\n    const root = isCF ? required('cf_api_url')\
+    \ : action.startsWith('cis-') ? required('cis_accounts_url') : required('destination_service_url');\n    const\
+    \ rows = await collect(data, root, headers);\n    if (action.startsWith('destinations-')) {\n      const level\
+    \ = action === 'destinations-instance' ? 'instance' : 'subaccount';\n      // Only non-sensitive display fields\
+    \ are retained, never passwords returned by list APIs.\n      put('setup_destinations_' + level, JSON.stringify(rows.map(d\
+    \ => ({name: d.Name, url: d.URL, authentication: d.Authentication, proxy: d.ProxyType}))));\n    } else if (action\
+    \ === 'cis-subaccounts') {\n      put('setup_subaccounts', JSON.stringify(rows.map(s => ({guid: s.guid, name:\
+    \ s.displayName, region: s.region, subdomain: s.subdomain}))));\n    } else {\n      const key = {'cf-native-login':\
+    \ 'setup_cf_orgs', 'cf-orgs': 'setup_cf_orgs', 'cf-spaces': 'setup_cf_spaces', 'cf-instances': 'setup_cf_instances',\
+    \ 'cf-bindings': 'setup_cf_bindings'}[action];\n      put(key, JSON.stringify(rows.map(r => ({guid: r.guid,\
+    \ name: r.name, instance_guid: r.relationships && r.relationships.service_instance && r.relationships.service_instance.data.guid}))));\n\
+    \    }\n  }\n  async function beforeBusiness() {\n    if (!enabled(get('setup_enabled'))) return;\n    guard();\n\
+    \    const oldBase = required('base_url');\n    await ensureDestination();\n    const current = String(insomnia.request.url);\n\
+    \    if (!current.startsWith(oldBase + '/') && current !== oldBase) throw new Error('URL fora da Destination\
+    \ ativa. Confira o Environment e a URL antes de enviar credenciais.');\n    if (get('setup_api_path') && get('setup_api_path')\
+    \ !== '/odata/v2' && current.startsWith(oldBase + '/odata/v2/')) throw new Error('Os modelos existentes sao\
+    \ OData v2. Para outro servico, use Setup > Consultar entidade selecionada; nao converta o protocolo apenas\
+    \ trocando a URL.');\n    insomnia.request.url = required('base_url') + current.slice(oldBase.length);\n   \
+    \ applyAuth(get('destination_authorization'));\n  }\n  return {prepare, complete, beforeBusiness};\n})();\n\n\
+    const action = insomnia.variables.get('setup_action');\nif (action) await SFSetup.complete(action);\n"

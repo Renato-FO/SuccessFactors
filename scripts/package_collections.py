@@ -6,6 +6,7 @@ from pathlib import Path
 
 import yaml
 from generate import auth_folder,dump_yaml,uid,req,param,folder
+from setup_collection import attach_setup,SETUP_DEFAULTS
 
 ESSENTIAL = ['User','Photo','EmpJob','FOCompany','FOLocation']
 
@@ -57,6 +58,17 @@ def package(root):
     lite=dict(type='collection.insomnia.rest/5.0',schema_version='5.1',name='SuccessFactors | Essencial',
         meta=dict(id=uid('wrk',identity),description='Colecao leve: autenticacao, diagnostico e consultas principais. Selecione o ambiente global SuccessFactors.'),
         collection=children,environments=dict(name='Base Environment',meta=dict(id=uid('env',identity)),data=env))
+    attach_setup(lite)
+    children=lite['collection']
+    for path in [root/'environments/SuccessFactors.yaml',root/'environments/environment.example.json']:
+        if path.suffix=='.yaml':
+            environment=yaml.safe_load(path.read_text(encoding='utf-8'))
+            environment['environments']['data'].update(SETUP_DEFAULTS)
+            path.write_text(dump_yaml(environment),encoding='utf-8')
+        else:
+            environment=json.loads(path.read_text(encoding='utf-8'))
+            environment.update(SETUP_DEFAULTS)
+            path.write_text(json.dumps(environment,indent=2)+'\n',encoding='utf-8')
     def count(items):return sum(1 if 'method' in r else count(r.get('children',[])) for r in items)
     # Finish and verify the archive before removing any of the source files.
     if generated:

@@ -1,0 +1,12 @@
+{
+  "name": "successfactors-insomnia-library",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/test-scripts.mjs && node scripts/test-setup.mjs"
+  },
+  "devDependencies": {
+    "atob": "^2.1.2",
+    "xml2js": "^0.6.2"
+  }
+}

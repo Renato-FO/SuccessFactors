@@ -28,17 +28,20 @@ collection:
       value: application/x-www-form-urlencoded
     parameters: []
     scripts:
-      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
-        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
-        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
-        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
-        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
-        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
-        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
-        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
-        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
-        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
-        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+      afterResponse: "const localUrl = insomnia.environment.get('base_url') || insomnia.baseEnvironment.get('base_url');\n\
+        const globalUrl = insomnia.globals.get('base_url') || insomnia.baseGlobals.get('base_url');\nconst tokenStore\
+        \ = localUrl || !globalUrl ? insomnia.environment : insomnia.globals;\nconst data = insomnia.response.json();\n\
+        if (!data.access_token) throw new Error('Token BTP ausente');\ntokenStore.set('btp_access_token', data.access_token);\n\
+        const service = String(insomnia.variables.get('destination_service_url') || '').replace(/\\/$/, '');\nconst\
+        \ name = insomnia.variables.get('destination_name');\nif (!service || !name) throw new Error('Preencha destination_service_url\
+        \ e destination_name');\nconst response = await new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n\
+        \    url: service + '/destination-configuration/v1/destinations/' + encodeURIComponent(name),\n    method:\
+        \ 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token, Accept: 'application/json' }\n  },\
+        \ (error, response) => error ? reject(error) : resolve(response));\n});\nif (response.code !== 200) throw\
+        \ new Error('Destination retornou HTTP ' + response.code);\nconst destination = response.json();\nconst\
+        \ token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token) throw new Error('Destination\
+        \ não retornou token utilizável');\ntokenStore.set('access_token', token.value);\ninsomnia.test('Token SuccessFactors\
+        \ obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
     body:
       mimeType: application/x-www-form-urlencoded
       params:
@@ -60,11 +63,17 @@ collection:
       value: application/x-www-form-urlencoded
     parameters: []
     scripts:
-      afterResponse: 'const data = insomnia.response.json();
+      afterResponse: 'const localUrl = insomnia.environment.get(''base_url'') || insomnia.baseEnvironment.get(''base_url'');
+
+        const globalUrl = insomnia.globals.get(''base_url'') || insomnia.baseGlobals.get(''base_url'');
+
+        const tokenStore = localUrl || !globalUrl ? insomnia.environment : insomnia.globals;
+
+        const data = insomnia.response.json();
 
         if (!data.access_token) throw new Error(''Token ausente na resposta'');
 
-        insomnia.globals.set(''btp_access_token'', data.access_token);'
+        tokenStore.set(''btp_access_token'', data.access_token);'
     body:
       mimeType: application/x-www-form-urlencoded
       params:
@@ -86,13 +95,19 @@ collection:
       value: application/json
     parameters: []
     scripts:
-      afterResponse: 'const data = insomnia.response.json();
+      afterResponse: 'const localUrl = insomnia.environment.get(''base_url'') || insomnia.baseEnvironment.get(''base_url'');
+
+        const globalUrl = insomnia.globals.get(''base_url'') || insomnia.baseGlobals.get(''base_url'');
+
+        const tokenStore = localUrl || !globalUrl ? insomnia.environment : insomnia.globals;
+
+        const data = insomnia.response.json();
 
         const token = (data.authTokens || []).find(t => t.value && !t.error);
 
         if (!token) throw new Error(''Destination sem token utilizável'');
 
-        insomnia.globals.set(''access_token'', token.value);'
+        tokenStore.set(''access_token'', token.value);'
   - name: Alternativa — Token direto SAML
     url: '{{ _.base_url }}/oauth/token'
     method: POST
@@ -106,11 +121,17 @@ collection:
       value: application/x-www-form-urlencoded
     parameters: []
     scripts:
-      afterResponse: 'const data = insomnia.response.json();
+      afterResponse: 'const localUrl = insomnia.environment.get(''base_url'') || insomnia.baseEnvironment.get(''base_url'');
+
+        const globalUrl = insomnia.globals.get(''base_url'') || insomnia.baseGlobals.get(''base_url'');
+
+        const tokenStore = localUrl || !globalUrl ? insomnia.environment : insomnia.globals;
+
+        const data = insomnia.response.json();
 
         if (!data.access_token) throw new Error(''Token ausente na resposta'');
 
-        insomnia.globals.set(''access_token'', data.access_token);'
+        tokenStore.set(''access_token'', data.access_token);'
     body:
       mimeType: application/x-www-form-urlencoded
       params:

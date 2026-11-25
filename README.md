@@ -39,6 +39,8 @@ Execute **Conectar — BTP + SuccessFactors em uma chamada**. O script obtém o 
 
 Também há chamadas separadas **01 — Token BTP** e **02 — Token SuccessFactors via Destination** para diagnóstico. A Destination deve estar configurada para entregar um token de acesso compatível com o SuccessFactors, por exemplo com OAuth2 SAML Bearer Assertion. O token BTP serve para consultar a Destination; o token retornado em `authTokens` é usado nas chamadas do SuccessFactors.
 
+Se você preencher `base_url` em um subambiente da própria coleção, os scripts salvam os tokens nesse subambiente. Isso funciona para a coleção atual. Para compartilhar o token entre todas as coleções, mantenha a conexão no ambiente global **SuccessFactors** e selecione-o em cada coleção. Sem um ambiente global selecionado, o Insomnia não persiste variáveis gravadas apenas em `insomnia.globals`; por isso os scripts usam o ambiente da coleção como alternativa. A resposta principal de **Conectar** mostra o token BTP; o token do SuccessFactors é obtido pela segunda chamada do script e salvo em `access_token`.
+
 ### OAuth direto com SAML
 
 Preencha `base_url`, `sf_company_id`, `sf_client_id` e `saml_assertion` no ambiente global. Execute **Alternativa — Token direto SAML**. O script salva `access_token` global automaticamente.

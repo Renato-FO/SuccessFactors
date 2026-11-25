@@ -206,6 +206,11 @@ def req(identity,name,path,method='GET',params=None,body=None,description='',aut
 def folder(identity,name,children,description=''):
     return dict(name=name,meta=dict(id=uid('fld',identity),description=description),children=children)
 
+TOKEN_SCOPE = """const localUrl = insomnia.environment.get('base_url') || insomnia.baseEnvironment.get('base_url');
+const globalUrl = insomnia.globals.get('base_url') || insomnia.baseGlobals.get('base_url');
+const tokenStore = localUrl || !globalUrl ? insomnia.environment : insomnia.globals;
+"""
+
 def auth_folder(identity):
     save = lambda field: f"const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token ausente na resposta');\ninsomnia.globals.set('{field}', data.access_token);"
     btp=req(identity+'/btp','01 — Token BTP','',method='POST',auth=dict(type='basic',username='{{ _.btp_client_id }}',password='{{ _.btp_client_secret }}'),description='Service key do Destination Service: url + /oauth/token, clientid e clientsecret.',after=save('btp_access_token'))
@@ -238,6 +243,8 @@ insomnia.globals.set('access_token', token.value);
 insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);
 """)
     connect['url']=btp['url'];connect['body']=btp['body'];connect['headers']=btp['headers']
+    for request in [connect,btp,dest,direct]:
+        request['scripts']['afterResponse'] = TOKEN_SCOPE + request['scripts']['afterResponse'].replace('insomnia.globals.set(', 'tokenStore.set(')
     return folder(identity+'/auth','00 — Autenticacao',[connect,btp,dest,direct])
 
 def key_capture(name,keys,props):

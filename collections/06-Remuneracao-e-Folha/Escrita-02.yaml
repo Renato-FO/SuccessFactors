@@ -1,0 +1,1921 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Remuneracao-e-Folha | Escrita 02
+meta:
+  id: wrk_aa2da23c0be43658351bcf60a8cad447
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_9f8f3db02efa698ee6d9da91357b2315
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_6d31b00605635b49f66db4428a7b9dd1
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_fe6aea3874581f2c434fc26ed5c7951d
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_67958d855e9dc6ee36c5d958ed5a90e7
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_c29c3dde85519f7c7f1d9ad3bfd36c16
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: PaymentInformationDetailV3PER
+  meta:
+    id: fld_26736c336cb46359ee52f94c5f206711
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3PER'
+    method: POST
+    meta:
+      id: req_0ca8d6da0b95305ad1cbbfb1108a8308
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3PER. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id004
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3PER({{ _.key_PaymentInformationDetailV3PER }})'
+    method: MERGE
+    meta:
+      id: req_2a04611a0d0fdf854b45b8fee33b6f89
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3PER. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_1242f5278074e302ec961ecdc05252ec
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3PER. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PaymentInformationDetailV3PER\"\n    },\n    \"PaymentInformationDetailV3_externalCode\"\
+        : \"0\",\n    \"PaymentInformationV3_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"PaymentInformationV3_worker\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3PER({{ _.key_PaymentInformationDetailV3PER }})'
+    method: DELETE
+    meta:
+      id: req_9a7c5491136bcb520141812ff72824e9
+      description: 'Exclui o registro identificado pela chave. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64),
+        PaymentInformationV3_effectiveStartDate (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_PaymentInformationDetailV3PER. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PaymentInformationDetailV3PRY
+  meta:
+    id: fld_7f5aca1e79f3eb118664f90cf45508ed
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3PRY'
+    method: POST
+    meta:
+      id: req_ac4d05b954ecd6e8ded23b5bd058bead
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3PRY. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id005
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3PRY({{ _.key_PaymentInformationDetailV3PRY }})'
+    method: MERGE
+    meta:
+      id: req_393be0e2aedc8981bc886301cf128dc3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3PRY. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_1d23c2b3b0638206e5649699e27adabf
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3PRY. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PaymentInformationDetailV3PRY\"\n    },\n    \"PaymentInformationDetailV3_externalCode\"\
+        : \"0\",\n    \"PaymentInformationV3_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"PaymentInformationV3_worker\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3PRY({{ _.key_PaymentInformationDetailV3PRY }})'
+    method: DELETE
+    meta:
+      id: req_bfc41efaa68ea4288ed1f5fcf21e6b6c
+      description: 'Exclui o registro identificado pela chave. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64),
+        PaymentInformationV3_effectiveStartDate (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_PaymentInformationDetailV3PRY. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PaymentInformationDetailV3SUR
+  meta:
+    id: fld_13e3f8afe85eeda2a72cc18c42bf2269
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3SUR'
+    method: POST
+    meta:
+      id: req_08f54eb426103cc76e53f1a7a82797ab
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3SUR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id006
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3SUR({{ _.key_PaymentInformationDetailV3SUR }})'
+    method: MERGE
+    meta:
+      id: req_2beb9beacc3114c05d561fbad28349c7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3SUR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_a7d8c07a0ebb1d2ae91feb0cbac22e45
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3SUR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PaymentInformationDetailV3SUR\"\n    },\n    \"PaymentInformationDetailV3_externalCode\"\
+        : \"0\",\n    \"PaymentInformationV3_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"PaymentInformationV3_worker\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3SUR({{ _.key_PaymentInformationDetailV3SUR }})'
+    method: DELETE
+    meta:
+      id: req_a4dbb25a2a00d42623caff46a5484edc
+      description: 'Exclui o registro identificado pela chave. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64),
+        PaymentInformationV3_effectiveStartDate (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_PaymentInformationDetailV3SUR. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PaymentInformationDetailV3SVK
+  meta:
+    id: fld_646f416362893bdedad49bac6e637a56
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3SVK'
+    method: POST
+    meta:
+      id: req_c22c29e9abddde9a2529ca9cd6f06b69
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3SVK. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id007
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3SVK({{ _.key_PaymentInformationDetailV3SVK }})'
+    method: MERGE
+    meta:
+      id: req_0f187f2506446d65152db56f39334f7c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3SVK. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id007
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_b4463f145165cb127730d7e514bf3293
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3SVK. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id007
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PaymentInformationDetailV3SVK\"\n    },\n    \"PaymentInformationDetailV3_externalCode\"\
+        : \"0\",\n    \"PaymentInformationV3_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"PaymentInformationV3_worker\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3SVK({{ _.key_PaymentInformationDetailV3SVK }})'
+    method: DELETE
+    meta:
+      id: req_98fd7cbd9cc99058fad3ee00c0792dd6
+      description: 'Exclui o registro identificado pela chave. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64),
+        PaymentInformationV3_effectiveStartDate (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_PaymentInformationDetailV3SVK. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PaymentInformationDetailV3SVN
+  meta:
+    id: fld_d00a677afab8e7a07f4aa04edfdbcb3b
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3SVN'
+    method: POST
+    meta:
+      id: req_14a591f987d773fc438f4a764fd6db2e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3SVN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id008
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3SVN({{ _.key_PaymentInformationDetailV3SVN }})'
+    method: MERGE
+    meta:
+      id: req_46234a22ca67f6465c8430b22937d931
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3SVN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id008
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_eba7a8cbb93cc78f008215f786181491
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3SVN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id008
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PaymentInformationDetailV3SVN\"\n    },\n    \"PaymentInformationDetailV3_externalCode\"\
+        : \"0\",\n    \"PaymentInformationV3_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"PaymentInformationV3_worker\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3SVN({{ _.key_PaymentInformationDetailV3SVN }})'
+    method: DELETE
+    meta:
+      id: req_7d657fff738eda837abdaac75e28ecb1
+      description: 'Exclui o registro identificado pela chave. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64),
+        PaymentInformationV3_effectiveStartDate (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_PaymentInformationDetailV3SVN. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PaymentInformationDetailV3TUN
+  meta:
+    id: fld_54426854deae3842e032d632ebf0245f
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3TUN'
+    method: POST
+    meta:
+      id: req_0c0b631c1268647042dfd10aa7b5c489
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3TUN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id009
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3TUN({{ _.key_PaymentInformationDetailV3TUN }})'
+    method: MERGE
+    meta:
+      id: req_a2d3d8aec3725e0f442c947053ad524c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3TUN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id009
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_7abb9ecf87d0b3bdae743f74f455c31e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3TUN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id009
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PaymentInformationDetailV3TUN\"\n    },\n    \"PaymentInformationDetailV3_externalCode\"\
+        : \"0\",\n    \"PaymentInformationV3_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"PaymentInformationV3_worker\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3TUN({{ _.key_PaymentInformationDetailV3TUN }})'
+    method: DELETE
+    meta:
+      id: req_8e761efd4edb41d5e36430e0aaca7d8a
+      description: 'Exclui o registro identificado pela chave. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64),
+        PaymentInformationV3_effectiveStartDate (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_PaymentInformationDetailV3TUN. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PaymentInformationDetailV3USA
+  meta:
+    id: fld_67be36fb53d61007120931c3f5285757
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3USA'
+    method: POST
+    meta:
+      id: req_1d54442dae71ddf9aa4d90de0ffd1c07
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3USA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id010
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3USA({{ _.key_PaymentInformationDetailV3USA }})'
+    method: MERGE
+    meta:
+      id: req_554385e7be33de0cb0a8a77c676a38bd
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3USA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id010
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_3a474985b40ae35a8c91f9a1330e85f8
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3USA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id010
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PaymentInformationDetailV3USA\"\n    },\n    \"PaymentInformationDetailV3_externalCode\"\
+        : \"0\",\n    \"PaymentInformationV3_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"PaymentInformationV3_worker\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3USA({{ _.key_PaymentInformationDetailV3USA }})'
+    method: DELETE
+    meta:
+      id: req_ca90a37d7810b042b61bea67f20a4ea7
+      description: 'Exclui o registro identificado pela chave. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64),
+        PaymentInformationV3_effectiveStartDate (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_PaymentInformationDetailV3USA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PaymentInformationDetailV3VEN
+  meta:
+    id: fld_0d8847ee29e2d49d4f005c5c0d98e3a9
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3VEN'
+    method: POST
+    meta:
+      id: req_dd42a42ee44f8f2f53e607a5fe9dd54d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3VEN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id011
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3VEN({{ _.key_PaymentInformationDetailV3VEN }})'
+    method: MERGE
+    meta:
+      id: req_32f70dd4d1feeca33d20729c14cd51b4
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3VEN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id011
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_7da040f42ea39e4dc9b77f5b7df2cd74
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3VEN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id011
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PaymentInformationDetailV3VEN\"\n    },\n    \"PaymentInformationDetailV3_externalCode\"\
+        : \"0\",\n    \"PaymentInformationV3_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"PaymentInformationV3_worker\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3VEN({{ _.key_PaymentInformationDetailV3VEN }})'
+    method: DELETE
+    meta:
+      id: req_3b5721f48bb255eac0722464a0dd6b31
+      description: 'Exclui o registro identificado pela chave. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64),
+        PaymentInformationV3_effectiveStartDate (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_PaymentInformationDetailV3VEN. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PaymentInformationDetailV3ZAF
+  meta:
+    id: fld_e3a20268a04a25584c15b04f5d40cefc
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3ZAF'
+    method: POST
+    meta:
+      id: req_a3ffb728d731c8cc34b9ec7dce660ff1
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3ZAF. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id012
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3ZAF({{ _.key_PaymentInformationDetailV3ZAF }})'
+    method: MERGE
+    meta:
+      id: req_3dd24c468d72597534aa3c40463ff50b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3ZAF. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id012
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_6dab78acac4ac77b6876a811c9c6a891
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3ZAF. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id012
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PaymentInformationDetailV3ZAF\"\n    },\n    \"PaymentInformationDetailV3_externalCode\"\
+        : \"0\",\n    \"PaymentInformationV3_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"PaymentInformationV3_worker\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3ZAF({{ _.key_PaymentInformationDetailV3ZAF }})'
+    method: DELETE
+    meta:
+      id: req_07888a3c68a966eb3991fad956b87a7c
+      description: 'Exclui o registro identificado pela chave. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64),
+        PaymentInformationV3_effectiveStartDate (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_PaymentInformationDetailV3ZAF. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PaymentInformationDetailV3ZWE
+  meta:
+    id: fld_9f1ee43db9a18d90c3f7fea77e06dcea
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3ZWE'
+    method: POST
+    meta:
+      id: req_70273be7c0046e336eb0d5fde7c56cfa
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3ZWE. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id013
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3ZWE({{ _.key_PaymentInformationDetailV3ZWE }})'
+    method: MERGE
+    meta:
+      id: req_47bb38e61c08fbdd0907740406b10e97
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3ZWE. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id013
+    body:
+      mimeType: application/json
+      text: "{\n  \"PaymentInformationDetailV3_externalCode\": \"0\",\n  \"PaymentInformationV3_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"PaymentInformationV3_worker\": \"REPLACE_ME\",\n  \"externalCode\": \"\
+        0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_48a2956724460c48388bc6a2d60ea72b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64), PaymentInformationV3_effectiveStartDate
+        (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_PaymentInformationDetailV3ZWE. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id013
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PaymentInformationDetailV3ZWE\"\n    },\n    \"PaymentInformationDetailV3_externalCode\"\
+        : \"0\",\n    \"PaymentInformationV3_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"PaymentInformationV3_worker\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationDetailV3ZWE({{ _.key_PaymentInformationDetailV3ZWE }})'
+    method: DELETE
+    meta:
+      id: req_b90fb0f7618ba70cd20a43ea63e5665a
+      description: 'Exclui o registro identificado pela chave. Chaves: PaymentInformationDetailV3_externalCode (Edm.Int64),
+        PaymentInformationV3_effectiveStartDate (Edm.DateTime), PaymentInformationV3_worker (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_PaymentInformationDetailV3ZWE. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PaymentInformationV3
+  meta:
+    id: fld_3ea71cd86d278184362173e1ccc107b7
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationV3'
+    method: POST
+    meta:
+      id: req_42d5f380f304a233bb5cb940be501241
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), worker (Edm.String). Execute Listar para preencher
+        automaticamente key_PaymentInformationV3. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id014
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"worker\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationV3({{ _.key_PaymentInformationV3 }})'
+    method: MERGE
+    meta:
+      id: req_506ae05915878ea7327852c0dec0d93c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), worker (Edm.String). Execute Listar para preencher
+        automaticamente key_PaymentInformationV3. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id014
+    body:
+      mimeType: application/json
+      text: "{\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"worker\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_1f1df5b57e8f0c08cedbde845fad5248
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), worker (Edm.String). Execute Listar para preencher
+        automaticamente key_PaymentInformationV3. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id014
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PaymentInformationV3\"\n    },\n    \"effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n    \"worker\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PaymentInformationV3({{ _.key_PaymentInformationV3 }})'
+    method: DELETE
+    meta:
+      id: req_28b01c20d58ad54b0e7c180d7f4f8204
+      description: 'Exclui o registro identificado pela chave. Chaves: effectiveStartDate (Edm.DateTime), worker
+        (Edm.String). Execute Listar para preencher automaticamente key_PaymentInformationV3. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PayrollConfigurationCategory
+  meta:
+    id: fld_74f80157aa80b16017fd22946ddea211
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PayrollConfigurationCategory'
+    method: POST
+    meta:
+      id: req_bf4e273aba4305cf08b11e64989cf463
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PayrollSystemConfiguration_externalCode (Edm.String), externalCode (Edm.String). Execute
+        Listar para preencher automaticamente key_PayrollConfigurationCategory. Campos e permissoes podem variar
+        por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id015
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"PayrollSystemConfiguration_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\"\
+        \n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PayrollConfigurationCategory({{ _.key_PayrollConfigurationCategory }})'
+    method: MERGE
+    meta:
+      id: req_44c974cb72e4911a2eab96096a4ec82f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PayrollSystemConfiguration_externalCode (Edm.String), externalCode (Edm.String). Execute
+        Listar para preencher automaticamente key_PayrollConfigurationCategory. Campos e permissoes podem variar
+        por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id015
+    body:
+      mimeType: application/json
+      text: "{\n  \"PayrollSystemConfiguration_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\"\
+        \n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_715e93816c7f28acdfb0f65ca9cfa459
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: PayrollSystemConfiguration_externalCode (Edm.String), externalCode (Edm.String). Execute
+        Listar para preencher automaticamente key_PayrollConfigurationCategory. Campos e permissoes podem variar
+        por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id015
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PayrollConfigurationCategory\"\n    },\n    \"PayrollSystemConfiguration_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PayrollConfigurationCategory({{ _.key_PayrollConfigurationCategory }})'
+    method: DELETE
+    meta:
+      id: req_09454581906509b140c97efc0a88b515
+      description: 'Exclui o registro identificado pela chave. Chaves: PayrollSystemConfiguration_externalCode (Edm.String),
+        externalCode (Edm.String). Execute Listar para preencher automaticamente key_PayrollConfigurationCategory.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: PayrollSystemConfiguration
+  meta:
+    id: fld_0218fccba0c9d7bc7dc47fb15939ec9d
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/PayrollSystemConfiguration'
+    method: POST
+    meta:
+      id: req_58667629773aa81029c6499c300b1e39
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_PayrollSystemConfiguration.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id016
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"enableBsi\": false,\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/PayrollSystemConfiguration({{ _.key_PayrollSystemConfiguration }})'
+    method: MERGE
+    meta:
+      id: req_ddd97c9fdf7455518601578940932a4e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_PayrollSystemConfiguration.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id016
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"enableBsi\": false,\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_18e8653173a0ecf8eb60f024958125f6
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_PayrollSystemConfiguration.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id016
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PayrollSystemConfiguration\"\n    },\n    \"externalCode\"\
+        : \"REPLACE_ME\",\n    \"enableBsi\": false,\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/PayrollSystemConfiguration({{ _.key_PayrollSystemConfiguration }})'
+    method: DELETE
+    meta:
+      id: req_76ece977caad3b4c1047b3e89bb34db5
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_PayrollSystemConfiguration. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: RecurringDeduction
+  meta:
+    id: fld_32ea7f20e07b2295516e30a88de6b60b
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/RecurringDeduction'
+    method: POST
+    meta:
+      id: req_459d08ab3f75ecd327e08922801df8ba
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), userSysId (Edm.String). Execute Listar para preencher
+        automaticamente key_RecurringDeduction. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id017
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"userSysId\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/RecurringDeduction({{ _.key_RecurringDeduction }})'
+    method: MERGE
+    meta:
+      id: req_ed3d3e27e92d60283131061c65530fc6
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), userSysId (Edm.String). Execute Listar para preencher
+        automaticamente key_RecurringDeduction. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id017
+    body:
+      mimeType: application/json
+      text: "{\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"userSysId\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_74533905675143b140305dd63593348b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), userSysId (Edm.String). Execute Listar para preencher
+        automaticamente key_RecurringDeduction. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id017
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"RecurringDeduction\"\n    },\n    \"effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n    \"userSysId\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/RecurringDeduction({{ _.key_RecurringDeduction }})'
+    method: DELETE
+    meta:
+      id: req_720c9860d57f82b534c4dcc08267de9e
+      description: 'Exclui o registro identificado pela chave. Chaves: effectiveStartDate (Edm.DateTime), userSysId
+        (Edm.String). Execute Listar para preencher automaticamente key_RecurringDeduction. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: RecurringDeductionItem
+  meta:
+    id: fld_792a1bb5641fab46e587a77defc1c557
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/RecurringDeductionItem'
+    method: POST
+    meta:
+      id: req_04de13636aa8eab354616ac4ff38516c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: RecurringDeduction_effectiveStartDate (Edm.DateTime), RecurringDeduction_userSysId (Edm.String),
+        payComponentType (Edm.String). Execute Listar para preencher automaticamente key_RecurringDeductionItem.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id018
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"RecurringDeduction_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"RecurringDeduction_userSysId\"\
+        : \"REPLACE_ME\",\n  \"amount\": \"0\",\n  \"frequency\": \"REPLACE_ME\",\n  \"payComponentType\": \"REPLACE_ME\"\
+        \n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/RecurringDeductionItem({{ _.key_RecurringDeductionItem }})'
+    method: MERGE
+    meta:
+      id: req_81ec709c7c43d1fbfa30a0d5d857d29e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: RecurringDeduction_effectiveStartDate (Edm.DateTime), RecurringDeduction_userSysId (Edm.String),
+        payComponentType (Edm.String). Execute Listar para preencher automaticamente key_RecurringDeductionItem.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id018
+    body:
+      mimeType: application/json
+      text: "{\n  \"RecurringDeduction_effectiveStartDate\": \"/Date(946684800000)/\",\n  \"RecurringDeduction_userSysId\"\
+        : \"REPLACE_ME\",\n  \"payComponentType\": \"REPLACE_ME\",\n  \"amount\": \"0\",\n  \"frequency\": \"REPLACE_ME\"\
+        \n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_e8f1d9b170e0d58aae8b2b72e515615e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: RecurringDeduction_effectiveStartDate (Edm.DateTime), RecurringDeduction_userSysId (Edm.String),
+        payComponentType (Edm.String). Execute Listar para preencher automaticamente key_RecurringDeductionItem.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id018
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"RecurringDeductionItem\"\n    },\n    \"RecurringDeduction_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n    \"RecurringDeduction_userSysId\": \"REPLACE_ME\",\n    \"payComponentType\"\
+        : \"REPLACE_ME\",\n    \"amount\": \"0\",\n    \"frequency\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/RecurringDeductionItem({{ _.key_RecurringDeductionItem }})'
+    method: DELETE
+    meta:
+      id: req_c635c39408f687bc7cff03842b92db1a
+      description: 'Exclui o registro identificado pela chave. Chaves: RecurringDeduction_effectiveStartDate (Edm.DateTime),
+        RecurringDeduction_userSysId (Edm.String), payComponentType (Edm.String). Execute Listar para preencher
+        automaticamente key_RecurringDeductionItem. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: SpotAward
+  meta:
+    id: fld_321c726e5b5047f2da0b6002b1d615ca
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/SpotAward'
+    method: POST
+    meta:
+      id: req_25e7b4cff30b665a704a175b2af8d32b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_SpotAward.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id019
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/SpotAward({{ _.key_SpotAward }})'
+    method: MERGE
+    meta:
+      id: req_56de7d1368ba1a2d8d23fabc252f93b7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_SpotAward.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id019
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_37f759ca055db287ee98d2fa8e39da25
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_SpotAward.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id019
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"SpotAward\"\n    },\n    \"externalCode\": \"0\"\n\
+        \  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/SpotAward({{ _.key_SpotAward }})'
+    method: DELETE
+    meta:
+      id: req_a3b21d55363b2eea786a238e71c7fdc8
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.Int64). Execute Listar
+        para preencher automaticamente key_SpotAward. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: SpotAwardBudget
+  meta:
+    id: fld_f6baf97671fd171d1ca802ebbb45f514
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/SpotAwardBudget'
+    method: POST
+    meta:
+      id: req_c07fde2406742c7672d8695b5af37202
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), externalCode (Edm.String). Execute Listar para preencher
+        automaticamente key_SpotAwardBudget. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id020
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"currency\": \"REPLACE_ME\",\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"effectiveStatus\"\
+        : \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/SpotAwardBudget({{ _.key_SpotAwardBudget }})'
+    method: MERGE
+    meta:
+      id: req_c1ef800a96576936fe0ead0a4e050056
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), externalCode (Edm.String). Execute Listar para preencher
+        automaticamente key_SpotAwardBudget. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id020
+    body:
+      mimeType: application/json
+      text: "{\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"currency\"\
+        : \"REPLACE_ME\",\n  \"effectiveStatus\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_e8046304bed73785d0a6b91fab80b558
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), externalCode (Edm.String). Execute Listar para preencher
+        automaticamente key_SpotAwardBudget. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id020
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"SpotAwardBudget\"\n    },\n    \"effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n    \"externalCode\": \"REPLACE_ME\",\n    \"currency\": \"REPLACE_ME\",\n\
+        \    \"effectiveStatus\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/SpotAwardBudget({{ _.key_SpotAwardBudget }})'
+    method: DELETE
+    meta:
+      id: req_8b784e576491659ddc4e6f1b5a6322d2
+      description: 'Exclui o registro identificado pela chave. Chaves: effectiveStartDate (Edm.DateTime), externalCode
+        (Edm.String). Execute Listar para preencher automaticamente key_SpotAwardBudget. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: SpotAwardProgram
+  meta:
+    id: fld_1cc8a6d79405f50a1e91c2857df5f574
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/SpotAwardProgram'
+    method: POST
+    meta:
+      id: req_c0da4216967e32326b41441e1b096d2f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_SpotAwardProgram.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id021
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"functionalCurrency\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/SpotAwardProgram({{ _.key_SpotAwardProgram }})'
+    method: MERGE
+    meta:
+      id: req_34b4ab7a7ef58d81dbe689d212adf285
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_SpotAwardProgram.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id021
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"functionalCurrency\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_58bc1ca045fe5704fac9c4a3e5cd0985
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_SpotAwardProgram.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id021
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"SpotAwardProgram\"\n    },\n    \"externalCode\": \"\
+        REPLACE_ME\",\n    \"functionalCurrency\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/SpotAwardProgram({{ _.key_SpotAwardProgram }})'
+    method: DELETE
+    meta:
+      id: req_539688c4cdb6d6f0bd88f2a6895214b4
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_SpotAwardProgram. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: SpotAwardProgramAdvancedSettings
+  meta:
+    id: fld_b72456d126e05ddc53a28441d5d4d917
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/SpotAwardProgramAdvancedSettings'
+    method: POST
+    meta:
+      id: req_7b2b6768de5d94f392f5a81c7a5de9f7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: SpotAwardProgram_externalCode (Edm.String), externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_SpotAwardProgramAdvancedSettings. Campos e permissoes podem variar por
+        tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id022
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"SpotAwardProgram_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/SpotAwardProgramAdvancedSettings({{ _.key_SpotAwardProgramAdvancedSettings }})'
+    method: MERGE
+    meta:
+      id: req_0e6343fc72b12c37bb3106e41ed514cd
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: SpotAwardProgram_externalCode (Edm.String), externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_SpotAwardProgramAdvancedSettings. Campos e permissoes podem variar por
+        tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id022
+    body:
+      mimeType: application/json
+      text: "{\n  \"SpotAwardProgram_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_1410553003383af9de62b7f2c39a8733
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: SpotAwardProgram_externalCode (Edm.String), externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_SpotAwardProgramAdvancedSettings. Campos e permissoes podem variar por
+        tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id022
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"SpotAwardProgramAdvancedSettings\"\n    },\n    \"\
+        SpotAwardProgram_externalCode\": \"REPLACE_ME\",\n    \"externalCode\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/SpotAwardProgramAdvancedSettings({{ _.key_SpotAwardProgramAdvancedSettings }})'
+    method: DELETE
+    meta:
+      id: req_5c764a7d0f76233859dd55037c28c69c
+      description: 'Exclui o registro identificado pela chave. Chaves: SpotAwardProgram_externalCode (Edm.String),
+        externalCode (Edm.String). Execute Listar para preencher automaticamente key_SpotAwardProgramAdvancedSettings.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+environments:
+  name: Base Environment
+  meta:
+    id: env_aa2da23c0be43658351bcf60a8cad447
+  data:
+    next_page_url: ''
+    key_PaymentInformationDetailV3PER: PaymentInformationDetailV3_externalCode=0L,PaymentInformationV3_effectiveStartDate=datetime'2000-01-01T00:00:00',PaymentInformationV3_worker='REPLACE_ME',externalCode=0L
+    key_PaymentInformationDetailV3PRY: PaymentInformationDetailV3_externalCode=0L,PaymentInformationV3_effectiveStartDate=datetime'2000-01-01T00:00:00',PaymentInformationV3_worker='REPLACE_ME',externalCode=0L
+    key_PaymentInformationDetailV3SUR: PaymentInformationDetailV3_externalCode=0L,PaymentInformationV3_effectiveStartDate=datetime'2000-01-01T00:00:00',PaymentInformationV3_worker='REPLACE_ME',externalCode=0L
+    key_PaymentInformationDetailV3SVK: PaymentInformationDetailV3_externalCode=0L,PaymentInformationV3_effectiveStartDate=datetime'2000-01-01T00:00:00',PaymentInformationV3_worker='REPLACE_ME',externalCode=0L
+    key_PaymentInformationDetailV3SVN: PaymentInformationDetailV3_externalCode=0L,PaymentInformationV3_effectiveStartDate=datetime'2000-01-01T00:00:00',PaymentInformationV3_worker='REPLACE_ME',externalCode=0L
+    key_PaymentInformationDetailV3TUN: PaymentInformationDetailV3_externalCode=0L,PaymentInformationV3_effectiveStartDate=datetime'2000-01-01T00:00:00',PaymentInformationV3_worker='REPLACE_ME',externalCode=0L
+    key_PaymentInformationDetailV3USA: PaymentInformationDetailV3_externalCode=0L,PaymentInformationV3_effectiveStartDate=datetime'2000-01-01T00:00:00',PaymentInformationV3_worker='REPLACE_ME',externalCode=0L
+    key_PaymentInformationDetailV3VEN: PaymentInformationDetailV3_externalCode=0L,PaymentInformationV3_effectiveStartDate=datetime'2000-01-01T00:00:00',PaymentInformationV3_worker='REPLACE_ME',externalCode=0L
+    key_PaymentInformationDetailV3ZAF: PaymentInformationDetailV3_externalCode=0L,PaymentInformationV3_effectiveStartDate=datetime'2000-01-01T00:00:00',PaymentInformationV3_worker='REPLACE_ME',externalCode=0L
+    key_PaymentInformationDetailV3ZWE: PaymentInformationDetailV3_externalCode=0L,PaymentInformationV3_effectiveStartDate=datetime'2000-01-01T00:00:00',PaymentInformationV3_worker='REPLACE_ME',externalCode=0L
+    key_PaymentInformationV3: effectiveStartDate=datetime'2000-01-01T00:00:00',worker='REPLACE_ME'
+    key_PayrollConfigurationCategory: PayrollSystemConfiguration_externalCode='REPLACE_ME',externalCode='REPLACE_ME'
+    key_PayrollSystemConfiguration: externalCode='REPLACE_ME'
+    key_RecurringDeduction: effectiveStartDate=datetime'2000-01-01T00:00:00',userSysId='REPLACE_ME'
+    key_RecurringDeductionItem: RecurringDeduction_effectiveStartDate=datetime'2000-01-01T00:00:00',RecurringDeduction_userSysId='REPLACE_ME',payComponentType='REPLACE_ME'
+    key_SpotAward: externalCode=0L
+    key_SpotAwardBudget: effectiveStartDate=datetime'2000-01-01T00:00:00',externalCode='REPLACE_ME'
+    key_SpotAwardProgram: externalCode='REPLACE_ME'
+    key_SpotAwardProgramAdvancedSettings: SpotAwardProgram_externalCode='REPLACE_ME',externalCode='REPLACE_ME'

@@ -1,0 +1,1836 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Workflows | Leitura 01
+meta:
+  id: wrk_c36a19f43e239ce82867f48760d1682c
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_eb8f8977ce8e38cb6add7e90567018a3
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_6bb4659919ab6ea1c425fa84fd79b78c
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_edf41c3d5d5e50a704e4d45b97768da1
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_501417ff0d15ac07b56a1898e79cf952
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_738825a3b5d16a1c2c8b97dd31e4bd6b
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: FOWfConfig
+  meta:
+    id: fld_93a2d31f3908dd33ede22e278d02db7e
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/FOWfConfig'
+    method: GET
+    meta:
+      id: req_866c17e5467c3aee4e70c155b82ffa47
+      description: 'Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_FOWfConfig.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id004
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: externalCode,actionType,approverRole,approverType,context,createdBy,createdDateTime,createdOn,description
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"externalCode\": \"Edm.String\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_FOWfConfig', Object.entries(types).map(([k,t]) => k + '='\
+        \ + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/FOWfConfig'
+    method: GET
+    meta:
+      id: req_f4136aa9847cb3ad08052a3112d98a98
+      description: 'Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_FOWfConfig.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: externalCode,actionType,approverRole,approverType,context,createdBy,createdDateTime,createdOn,description
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/FOWfConfig({{ _.key_FOWfConfig }})'
+    method: GET
+    meta:
+      id: req_c448d2d996171d928bf27ab4d0102ff9
+      description: 'Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_FOWfConfig.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/FOWfConfig'
+    method: GET
+    meta:
+      id: req_ab62df93d42a70315f40d3258961c1b7
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: externalCode eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/FOWfConfig/$count'
+    method: GET
+    meta:
+      id: req_21c7f26413a143a053e8f4a38829e3c3
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_1f702a166850d916bfe16c5e272c997f
+      description: ''
+    children:
+    - name: Navegar — futureDatedAlternateWorkflowNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfig({{ _.key_FOWfConfig }})/futureDatedAlternateWorkflowNav'
+      method: GET
+      meta:
+        id: req_75638e908e610df1a38a239644035a67
+        description: 'Destino: FOWfConfig. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente
+          key_FOWfConfig. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+    - name: Expandir — futureDatedAlternateWorkflowNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfig'
+      method: GET
+      meta:
+        id: req_addbb6d4976434fb06adc23b478aa57b
+        description: 'Destino: FOWfConfig. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: futureDatedAlternateWorkflowNav
+        disabled: false
+    - name: Navegar — wfStepApproverNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfig({{ _.key_FOWfConfig }})/wfStepApproverNav'
+      method: GET
+      meta:
+        id: req_91021f57f855b2d73de43125359a6de5
+        description: 'Destino: FOWfConfigStepApprover. Chaves: externalCode (Edm.String). Execute Listar para preencher
+          automaticamente key_FOWfConfig. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfStepApproverNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfig'
+      method: GET
+      meta:
+        id: req_d1050715857f5330a1bc2459d2f418a9
+        description: 'Destino: FOWfConfigStepApprover. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfStepApproverNav
+        disabled: false
+- name: FOWfConfigStepApprover
+  meta:
+    id: fld_0db0f7ae24f8a257704e1ec4e9887d70
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover'
+    method: GET
+    meta:
+      id: req_c7e809e6d87555122753b79033f07e8f
+      description: 'Chaves: externalCode (Edm.String), stepNum (Edm.Int64). Execute Listar para preencher automaticamente
+        key_FOWfConfigStepApprover. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id005
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: externalCode,stepNum,actionType,approverPositionRelationship,approverRole,approverType,context,createdBy,createdDateTime,emailConfiguration
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"externalCode\": \"Edm.String\"\
+        , \"stepNum\": \"Edm.Int64\"};\nif (first && Object.keys(types).length && Object.keys(types).every(k =>\
+        \ first[k] !== undefined && first[k] !== null)) {\n  const literal = (type, value) => {\n    if (type ===\
+        \ 'Edm.String') return \"'\" + String(value).replaceAll(\"'\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime'\
+        \ || type === 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\\
+        d{4})?\\)\\/$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z', type\
+        \ === 'Edm.DateTime' ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset')\
+        \ + \"'\" + iso + \"'\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return\
+        \ String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n\
+        \  };\n  insomnia.environment.set('key_FOWfConfigStepApprover', Object.entries(types).map(([k,t]) => k +\
+        \ '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover'
+    method: GET
+    meta:
+      id: req_08ce4ef7b71d09df8ede44c2a5196154
+      description: 'Chaves: externalCode (Edm.String), stepNum (Edm.Int64). Execute Listar para preencher automaticamente
+        key_FOWfConfigStepApprover. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: externalCode,stepNum,actionType,approverPositionRelationship,approverRole,approverType,context,createdBy,createdDateTime,emailConfiguration
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover({{ _.key_FOWfConfigStepApprover }})'
+    method: GET
+    meta:
+      id: req_8d0c39d2585781147422d9e9df3dca84
+      description: 'Chaves: externalCode (Edm.String), stepNum (Edm.Int64). Execute Listar para preencher automaticamente
+        key_FOWfConfigStepApprover. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover'
+    method: GET
+    meta:
+      id: req_c174ced8ccb5923e4905288404c22456
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: externalCode eq 'REPLACE_ME' and stepNum eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover/$count'
+    method: GET
+    meta:
+      id: req_2990c22056720bd1da1dbe7f69a0524f
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_eebd7d910f6130efa32b775beb51d8ae
+      description: ''
+    children:
+    - name: Navegar — approverDynamicRoleNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover({{ _.key_FOWfConfigStepApprover }})/approverDynamicRoleNav'
+      method: GET
+      meta:
+        id: req_7483fa982c152578e02d848efec672ef
+        description: 'Destino: FODynamicRole. Chaves: externalCode (Edm.String), stepNum (Edm.Int64). Execute Listar
+          para preencher automaticamente key_FOWfConfigStepApprover. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — approverDynamicRoleNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover'
+      method: GET
+      meta:
+        id: req_e4abff0e52df401e327b8183e1de20a9
+        description: 'Destino: FODynamicRole. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: approverDynamicRoleNav
+        disabled: false
+    - name: Navegar — approverGroupNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover({{ _.key_FOWfConfigStepApprover }})/approverGroupNav'
+      method: GET
+      meta:
+        id: req_48bb46ce8e486779fff7c5ad748be524
+        description: 'Destino: DynamicGroup. Chaves: externalCode (Edm.String), stepNum (Edm.Int64). Execute Listar
+          para preencher automaticamente key_FOWfConfigStepApprover. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — approverGroupNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover'
+      method: GET
+      meta:
+        id: req_a3c63a1f3f7006d8772f75e9fa960ce6
+        description: 'Destino: DynamicGroup. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: approverGroupNav
+        disabled: false
+    - name: Navegar — approverJobRelationshipNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover({{ _.key_FOWfConfigStepApprover }})/approverJobRelationshipNav'
+      method: GET
+      meta:
+        id: req_866a484335c953d86f5bc51872d8169d
+        description: 'Destino: PicklistOption. Chaves: externalCode (Edm.String), stepNum (Edm.Int64). Execute Listar
+          para preencher automaticamente key_FOWfConfigStepApprover. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — approverJobRelationshipNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover'
+      method: GET
+      meta:
+        id: req_9f95403142eb6c3b55167ef4a3ca3c71
+        description: 'Destino: PicklistOption. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: approverJobRelationshipNav
+        disabled: false
+    - name: Navegar — approverPositionNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover({{ _.key_FOWfConfigStepApprover }})/approverPositionNav'
+      method: GET
+      meta:
+        id: req_b1c322e5b765f0cfc3545e847a097bca
+        description: 'Destino: Position. Chaves: externalCode (Edm.String), stepNum (Edm.Int64). Execute Listar
+          para preencher automaticamente key_FOWfConfigStepApprover. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — approverPositionNav
+      url: '{{ _.base_url }}/odata/v2/FOWfConfigStepApprover'
+      method: GET
+      meta:
+        id: req_0e66c83cfe29d4c85d9651636a892f59
+        description: 'Destino: Position. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: approverPositionNav
+        disabled: false
+- name: WfRequest
+  meta:
+    id: fld_290966ce715603a23fedc541877b83bb
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/WfRequest'
+    method: GET
+    meta:
+      id: req_adc4e7a4aa217aa1d9533b8ed14f6171
+      description: 'Chaves: wfRequestId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequest.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id006
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: wfRequestId,createdBy,createdDateTime,createdOn,currentStepNum,lastModifiedBy,lastModifiedDateTime,lastModifiedOn,module
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"wfRequestId\": \"Edm.Int64\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_WfRequest', Object.entries(types).map(([k,t]) => k + '='\
+        \ + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/WfRequest'
+    method: GET
+    meta:
+      id: req_a60778c5dc4c2eb37064fd3617eacef7
+      description: 'Chaves: wfRequestId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequest.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: wfRequestId,createdBy,createdDateTime,createdOn,currentStepNum,lastModifiedBy,lastModifiedDateTime,lastModifiedOn,module
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/WfRequest({{ _.key_WfRequest }})'
+    method: GET
+    meta:
+      id: req_d768e94e2e3889d4777f0ec26335f7e7
+      description: 'Chaves: wfRequestId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequest.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/WfRequest'
+    method: GET
+    meta:
+      id: req_c58fc87bb331cfea6ca54c2e43259e8b
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: wfRequestId eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/WfRequest/$count'
+    method: GET
+    meta:
+      id: req_c88def0221332073cc83763884c659dd
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_abbdc6734d82c4f1feb7e78a06ece047
+      description: ''
+    children:
+    - name: Navegar — parentWfRequestNav
+      url: '{{ _.base_url }}/odata/v2/WfRequest({{ _.key_WfRequest }})/parentWfRequestNav'
+      method: GET
+      meta:
+        id: req_4c753a97a1e6127e46730035010ec6ed
+        description: 'Destino: WfRequest. Chaves: wfRequestId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_WfRequest. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — parentWfRequestNav
+      url: '{{ _.base_url }}/odata/v2/WfRequest'
+      method: GET
+      meta:
+        id: req_3a632b3e5d585e16b23400dd03e52445
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: parentWfRequestNav
+        disabled: false
+    - name: Navegar — wfRequestCommentsNav
+      url: '{{ _.base_url }}/odata/v2/WfRequest({{ _.key_WfRequest }})/wfRequestCommentsNav'
+      method: GET
+      meta:
+        id: req_9c337c8d620ad08d81407fec18dc069f
+        description: 'Destino: WfRequestComments. Chaves: wfRequestId (Edm.Int64). Execute Listar para preencher
+          automaticamente key_WfRequest. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestCommentsNav
+      url: '{{ _.base_url }}/odata/v2/WfRequest'
+      method: GET
+      meta:
+        id: req_285231c33b22cc267ce4d7c179965dcb
+        description: 'Destino: WfRequestComments. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestCommentsNav
+        disabled: false
+    - name: Navegar — wfRequestParticipatorNav
+      url: '{{ _.base_url }}/odata/v2/WfRequest({{ _.key_WfRequest }})/wfRequestParticipatorNav'
+      method: GET
+      meta:
+        id: req_a5d98f8edad481018a4c30af09c3ff2f
+        description: 'Destino: WfRequestParticipator. Chaves: wfRequestId (Edm.Int64). Execute Listar para preencher
+          automaticamente key_WfRequest. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestParticipatorNav
+      url: '{{ _.base_url }}/odata/v2/WfRequest'
+      method: GET
+      meta:
+        id: req_b4d39421fcd463bb9e124a481e0fbab6
+        description: 'Destino: WfRequestParticipator. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestParticipatorNav
+        disabled: false
+    - name: Navegar — wfRequestStepNav
+      url: '{{ _.base_url }}/odata/v2/WfRequest({{ _.key_WfRequest }})/wfRequestStepNav'
+      method: GET
+      meta:
+        id: req_6640ed087d59536e9c0e5e823b23b4f8
+        description: 'Destino: WfRequestStep. Chaves: wfRequestId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_WfRequest. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestStepNav
+      url: '{{ _.base_url }}/odata/v2/WfRequest'
+      method: GET
+      meta:
+        id: req_f4370a7fefc63b8a9bd31ca828dbb8c3
+        description: 'Destino: WfRequestStep. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestStepNav
+        disabled: false
+    - name: Navegar — workflowAllowedActionListNav
+      url: '{{ _.base_url }}/odata/v2/WfRequest({{ _.key_WfRequest }})/workflowAllowedActionListNav'
+      method: GET
+      meta:
+        id: req_2e1d806829687236e2cefcfa80b28581
+        description: 'Destino: WorkflowAllowedActionList. Chaves: wfRequestId (Edm.Int64). Execute Listar para preencher
+          automaticamente key_WfRequest. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workflowAllowedActionListNav
+      url: '{{ _.base_url }}/odata/v2/WfRequest'
+      method: GET
+      meta:
+        id: req_2b95aba9effbe3681f1372e1b6768f94
+        description: 'Destino: WorkflowAllowedActionList. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workflowAllowedActionListNav
+        disabled: false
+- name: WfRequestComments
+  meta:
+    id: fld_baf50b4fb2a173c4ca2ea1e25670a6c6
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/WfRequestComments'
+    method: GET
+    meta:
+      id: req_9b9854490de58a1acd28fd2769f2502e
+      description: 'Chaves: wfRequestCommentId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequestComments.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id007
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: wfRequestCommentId,actionType,comments,createdBy,createdDateTime,createdOn,lastModifiedBy,lastModifiedDateTime,lastModifiedOn
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"wfRequestCommentId\": \"\
+        Edm.Int64\"};\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined\
+        \ && first[k] !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return\
+        \ \"'\" + String(value).replaceAll(\"'\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type ===\
+        \ 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\\
+        /$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime'\
+        \ ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"\
+        '\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) +\
+        \ ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n  };\n  insomnia.environment.set('key_WfRequestComments',\
+        \ Object.entries(types).map(([k,t]) => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next)\
+        \ insomnia.environment.set('next_page_url', data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/WfRequestComments'
+    method: GET
+    meta:
+      id: req_55110ba1d1ffa6316a0fadb184b2a54b
+      description: 'Chaves: wfRequestCommentId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequestComments.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: wfRequestCommentId,actionType,comments,createdBy,createdDateTime,createdOn,lastModifiedBy,lastModifiedDateTime,lastModifiedOn
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/WfRequestComments({{ _.key_WfRequestComments }})'
+    method: GET
+    meta:
+      id: req_47e2b1974463687d4901ecb9a370b974
+      description: 'Chaves: wfRequestCommentId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequestComments.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/WfRequestComments'
+    method: GET
+    meta:
+      id: req_6996072515bd8f27a958d1c633594bba
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: wfRequestCommentId eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/WfRequestComments/$count'
+    method: GET
+    meta:
+      id: req_a3224b1cdad3d6a8da2031db978fa379
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_1e65993542fe23ee03e7aca698a82e08
+      description: ''
+    children:
+    - name: Navegar — userNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestComments({{ _.key_WfRequestComments }})/userNav'
+      method: GET
+      meta:
+        id: req_73eddaaf144423b75b6f45462132db50
+        description: 'Destino: User. Chaves: wfRequestCommentId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_WfRequestComments. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+    - name: Expandir — userNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestComments'
+      method: GET
+      meta:
+        id: req_504eda2092daabeae5ee23be9f5e96ff
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userNav
+        disabled: false
+- name: WfRequestParticipator
+  meta:
+    id: fld_15348a667d7c721f3556d81029f84a6f
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/WfRequestParticipator'
+    method: GET
+    meta:
+      id: req_c286da3a8f4902390209c447fd4b4572
+      description: 'Chaves: wfRequestParticipatorId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequestParticipator.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id008
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: wfRequestParticipatorId,actorType,createdBy,createdDateTime,createdOn,lastModifiedBy,lastModifiedDateTime,lastModifiedOn,ownerId
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"wfRequestParticipatorId\"\
+        : \"Edm.Int64\"};\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !==\
+        \ undefined && first[k] !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String')\
+        \ return \"'\" + String(value).replaceAll(\"'\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type\
+        \ === 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\\
+        )\\/$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime'\
+        \ ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"\
+        '\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) +\
+        \ ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n  };\n  insomnia.environment.set('key_WfRequestParticipator',\
+        \ Object.entries(types).map(([k,t]) => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next)\
+        \ insomnia.environment.set('next_page_url', data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/WfRequestParticipator'
+    method: GET
+    meta:
+      id: req_cd6aad6b61f3c7efb2df4ed84b330b70
+      description: 'Chaves: wfRequestParticipatorId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequestParticipator.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: wfRequestParticipatorId,actorType,createdBy,createdDateTime,createdOn,lastModifiedBy,lastModifiedDateTime,lastModifiedOn,ownerId
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/WfRequestParticipator({{ _.key_WfRequestParticipator }})'
+    method: GET
+    meta:
+      id: req_72c9f8b9e10a3950adc2c89cbe3f595c
+      description: 'Chaves: wfRequestParticipatorId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequestParticipator.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/WfRequestParticipator'
+    method: GET
+    meta:
+      id: req_0822937da19cb4011aa33b15979ad40f
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: wfRequestParticipatorId eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/WfRequestParticipator/$count'
+    method: GET
+    meta:
+      id: req_1bb1c3bbad8957b090dd081454627709
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_56802d04defc01ec047a9229879fcad4
+      description: ''
+    children:
+    - name: Navegar — dynamicGroupNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestParticipator({{ _.key_WfRequestParticipator }})/dynamicGroupNav'
+      method: GET
+      meta:
+        id: req_0960c190ea3719d800626cf676908fef
+        description: 'Destino: DynamicGroup. Chaves: wfRequestParticipatorId (Edm.Int64). Execute Listar para preencher
+          automaticamente key_WfRequestParticipator. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — dynamicGroupNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestParticipator'
+      method: GET
+      meta:
+        id: req_e25fb858d3438c3cbc3c9e570309e54a
+        description: 'Destino: DynamicGroup. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: dynamicGroupNav
+        disabled: false
+    - name: Navegar — dynamicRoleNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestParticipator({{ _.key_WfRequestParticipator }})/dynamicRoleNav'
+      method: GET
+      meta:
+        id: req_1e20fdc5bc8f191c5c2aea1406b4ed7b
+        description: 'Destino: FODynamicRole. Chaves: wfRequestParticipatorId (Edm.Int64). Execute Listar para preencher
+          automaticamente key_WfRequestParticipator. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — dynamicRoleNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestParticipator'
+      method: GET
+      meta:
+        id: req_65ebc684b4632100c35e3bb25119a701
+        description: 'Destino: FODynamicRole. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: dynamicRoleNav
+        disabled: false
+    - name: Navegar — ownerNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestParticipator({{ _.key_WfRequestParticipator }})/ownerNav'
+      method: GET
+      meta:
+        id: req_ee8449d1540c9d21e210aad3780759eb
+        description: 'Destino: User. Chaves: wfRequestParticipatorId (Edm.Int64). Execute Listar para preencher
+          automaticamente key_WfRequestParticipator. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — ownerNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestParticipator'
+      method: GET
+      meta:
+        id: req_70149fd7397a6e1837f186c61795335f
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: ownerNav
+        disabled: false
+    - name: Navegar — positionNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestParticipator({{ _.key_WfRequestParticipator }})/positionNav'
+      method: GET
+      meta:
+        id: req_298ccf0ff8fcb60e902122e77ce3806f
+        description: 'Destino: Position. Chaves: wfRequestParticipatorId (Edm.Int64). Execute Listar para preencher
+          automaticamente key_WfRequestParticipator. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — positionNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestParticipator'
+      method: GET
+      meta:
+        id: req_97ac9608ccc453905dcc9e27dc06895b
+        description: 'Destino: Position. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: positionNav
+        disabled: false
+- name: WfRequestStep
+  meta:
+    id: fld_40a7096380123988a04e5d98b440ab4f
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/WfRequestStep'
+    method: GET
+    meta:
+      id: req_83cb03669eb4ef0c197aeba16c55437f
+      description: 'Chaves: wfRequestStepId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequestStep.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id009
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: wfRequestStepId,actionType,approverType,assignedTo,createdBy,createdDateTime,createdOn,lastModifiedBy,lastModifiedDateTime
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"wfRequestStepId\": \"Edm.Int64\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_WfRequestStep', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/WfRequestStep'
+    method: GET
+    meta:
+      id: req_974d2fc42e61848fbd68cf54393f61a1
+      description: 'Chaves: wfRequestStepId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequestStep.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: wfRequestStepId,actionType,approverType,assignedTo,createdBy,createdDateTime,createdOn,lastModifiedBy,lastModifiedDateTime
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/WfRequestStep({{ _.key_WfRequestStep }})'
+    method: GET
+    meta:
+      id: req_2cf2db9fac86182804d4f04481b95f25
+      description: 'Chaves: wfRequestStepId (Edm.Int64). Execute Listar para preencher automaticamente key_WfRequestStep.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/WfRequestStep'
+    method: GET
+    meta:
+      id: req_6979c181eb1912bb196bf67a0afa5b80
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: wfRequestStepId eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/WfRequestStep/$count'
+    method: GET
+    meta:
+      id: req_df61210f8ff22b3c188297642c608213
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_6da77a544ffc4fa650baa3d9835235cb
+      description: ''
+    children:
+    - name: Navegar — dynamicRoleNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep({{ _.key_WfRequestStep }})/dynamicRoleNav'
+      method: GET
+      meta:
+        id: req_fc7d9500592ba3da48362f9ab2de4d34
+        description: 'Destino: FODynamicRole. Chaves: wfRequestStepId (Edm.Int64). Execute Listar para preencher
+          automaticamente key_WfRequestStep. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — dynamicRoleNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep'
+      method: GET
+      meta:
+        id: req_5f5663bbe933c20659fc4216a1469453
+        description: 'Destino: FODynamicRole. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: dynamicRoleNav
+        disabled: false
+    - name: Navegar — jobRelationshipTypeNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep({{ _.key_WfRequestStep }})/jobRelationshipTypeNav'
+      method: GET
+      meta:
+        id: req_cb4dda9b68fe95c62a45b2664d154bb4
+        description: 'Destino: PicklistOption. Chaves: wfRequestStepId (Edm.Int64). Execute Listar para preencher
+          automaticamente key_WfRequestStep. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — jobRelationshipTypeNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep'
+      method: GET
+      meta:
+        id: req_acb701a7e3bd62da8ccf46c204df7aed
+        description: 'Destino: PicklistOption. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: jobRelationshipTypeNav
+        disabled: false
+    - name: Navegar — ownerNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep({{ _.key_WfRequestStep }})/ownerNav'
+      method: GET
+      meta:
+        id: req_d6558333793c465e0288353a785fcce0
+        description: 'Destino: User. Chaves: wfRequestStepId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_WfRequestStep. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — ownerNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep'
+      method: GET
+      meta:
+        id: req_1320d0a2a8deb83f308e1fdf4d1ff263
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: ownerNav
+        disabled: false
+    - name: Navegar — positionNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep({{ _.key_WfRequestStep }})/positionNav'
+      method: GET
+      meta:
+        id: req_c90a687aeab1c49f4d8a5205270e0131
+        description: 'Destino: Position. Chaves: wfRequestStepId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_WfRequestStep. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — positionNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep'
+      method: GET
+      meta:
+        id: req_b3591650b16caa348a714a02343dcdb1
+        description: 'Destino: Position. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: positionNav
+        disabled: false
+    - name: Navegar — processedByNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep({{ _.key_WfRequestStep }})/processedByNav'
+      method: GET
+      meta:
+        id: req_ee9b8b371a29de120b244696ab84fe6a
+        description: 'Destino: User. Chaves: wfRequestStepId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_WfRequestStep. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — processedByNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep'
+      method: GET
+      meta:
+        id: req_65c2f0e43e2c8cc0bdeac99b521a8013
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: processedByNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep({{ _.key_WfRequestStep }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_801348c18a05df65455e8ff5d0104685
+        description: 'Destino: WfRequest. Chaves: wfRequestStepId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_WfRequestStep. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/WfRequestStep'
+      method: GET
+      meta:
+        id: req_0a8dafa906c27f3ca6ddcfe665b7439e
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+- name: WorkflowAllowedActionList
+  meta:
+    id: fld_ef18567f243f2507395140bf13001e3a
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/WorkflowAllowedActionList'
+    method: GET
+    meta:
+      id: req_74654d6c07a5dc444f16da6d47851166
+      description: 'Chaves: wfRequestId (Edm.Int64). Execute Listar para preencher automaticamente key_WorkflowAllowedActionList.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id010
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: wfRequestId,allowApprove,allowDelegateDecline,allowDelegateGrant,allowDelegateRevoke,allowPostComment,allowReject,allowResubmit,allowSendback
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"wfRequestId\": \"Edm.Int64\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_WorkflowAllowedActionList', Object.entries(types).map(([k,t])\
+        \ => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/WorkflowAllowedActionList'
+    method: GET
+    meta:
+      id: req_7f2774e32a54ca88c686a28ce8cc613e
+      description: 'Chaves: wfRequestId (Edm.Int64). Execute Listar para preencher automaticamente key_WorkflowAllowedActionList.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id010
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: wfRequestId,allowApprove,allowDelegateDecline,allowDelegateGrant,allowDelegateRevoke,allowPostComment,allowReject,allowResubmit,allowSendback
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/WorkflowAllowedActionList({{ _.key_WorkflowAllowedActionList }})'
+    method: GET
+    meta:
+      id: req_e8e1f343531f2df4b5b79a4831be12c6
+      description: 'Chaves: wfRequestId (Edm.Int64). Execute Listar para preencher automaticamente key_WorkflowAllowedActionList.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id010
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/WorkflowAllowedActionList'
+    method: GET
+    meta:
+      id: req_c460d4f297405e9d92a3b020cb437c4a
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id010
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: wfRequestId eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/WorkflowAllowedActionList/$count'
+    method: GET
+    meta:
+      id: req_9624cf90a4d3d4ff4666d2c111d7bb2f
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+environments:
+  name: Base Environment
+  meta:
+    id: env_c36a19f43e239ce82867f48760d1682c
+  data:
+    next_page_url: ''
+    key_FOWfConfig: externalCode='REPLACE_ME'
+    key_FOWfConfigStepApprover: externalCode='REPLACE_ME',stepNum=0L
+    key_WfRequest: wfRequestId=0L
+    key_WfRequestComments: wfRequestCommentId=0L
+    key_WfRequestParticipator: wfRequestParticipatorId=0L
+    key_WfRequestStep: wfRequestStepId=0L
+    key_WorkflowAllowedActionList: wfRequestId=0L

@@ -1,0 +1,31 @@
+type: environment.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors
+meta:
+  id: wrk_b1727b2ec71be8f57b4130dfc4e9cf1b
+environments:
+  name: Base Environment
+  meta:
+    id: env_b1727b2ec71be8f57b4130dfc4e9cf1b
+  data:
+    base_url: https://api.example.successfactors.com
+    access_token: ''
+    btp_token_url: ''
+    btp_client_id: ''
+    btp_client_secret: ''
+    btp_access_token: ''
+    destination_service_url: ''
+    destination_name: YOUR_DESTINATION_NAME
+    sf_company_id: ''
+    sf_client_id: ''
+    saml_assertion: ''
+    page_size: '20'
+    skip: '0'
+    as_of_date: '2000-01-01'
+    from_date: '2000-01-01'
+    to_date: '2000-12-31'
+    user_id: USER_ID
+    person_id_external: PERSON_ID
+    company_code: COMPANY_CODE
+    location_code: LOCATION_CODE
+    next_page_url: ''

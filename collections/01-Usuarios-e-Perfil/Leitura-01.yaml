@@ -1,0 +1,4354 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Usuarios-e-Perfil | Leitura 01
+meta:
+  id: wrk_7184f3b52881f04b83dfaf21dd9ea46e
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_a88ec075425d4e83b076ede0666b6e27
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_e2f0f6ae3ab28c9e1dfb21823a85ad1f
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_a69ce3aac28e7609ca5f7d646fe78975
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_a72b26ef38d7762a0a4a58339f88551d
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_15a6498f6569e0a1656ced9cb46fb818
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: ExternalUser
+  meta:
+    id: fld_6b353056f70f29d31d86b1aaed0548d1
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/ExternalUser'
+    method: GET
+    meta:
+      id: req_50f6aaea814d73c339e20d3f5f763e17
+      description: 'Chaves: userId (Edm.String). Execute Listar para preencher automaticamente key_ExternalUser.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id004
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: userId,defaultLocale,is_deleted,lastModifiedDateTime,loginMethod,password,personGUID,personId,personIdExternal
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"userId\": \"Edm.String\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_ExternalUser', Object.entries(types).map(([k,t]) => k +\
+        \ '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/ExternalUser'
+    method: GET
+    meta:
+      id: req_69aeabadf8d49b64b9bb0dcc695cfcf9
+      description: 'Chaves: userId (Edm.String). Execute Listar para preencher automaticamente key_ExternalUser.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: userId,defaultLocale,is_deleted,lastModifiedDateTime,loginMethod,password,personGUID,personId,personIdExternal
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/ExternalUser({{ _.key_ExternalUser }})'
+    method: GET
+    meta:
+      id: req_74a9d4e77c1d9d88c91efb9fdaafb230
+      description: 'Chaves: userId (Edm.String). Execute Listar para preencher automaticamente key_ExternalUser.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/ExternalUser'
+    method: GET
+    meta:
+      id: req_1b5be8d749d5178d58fedabc53464399
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: userId eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/ExternalUser/$count'
+    method: GET
+    meta:
+      id: req_878271f2e37d70f17502c4e2d013e6c5
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_e868a2dc9d6301cbd7f1aefa173d3741
+      description: ''
+    children:
+    - name: Navegar — extAddressInfo
+      url: '{{ _.base_url }}/odata/v2/ExternalUser({{ _.key_ExternalUser }})/extAddressInfo'
+      method: GET
+      meta:
+        id: req_37f583ed698f55ca5c80b2542b8cbd76
+        description: 'Destino: ExtAddressInfo. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_ExternalUser. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — extAddressInfo
+      url: '{{ _.base_url }}/odata/v2/ExternalUser'
+      method: GET
+      meta:
+        id: req_062e32412b7726d46c638993bcbe4aae
+        description: 'Destino: ExtAddressInfo. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: extAddressInfo
+        disabled: false
+    - name: Navegar — extEmailInfo
+      url: '{{ _.base_url }}/odata/v2/ExternalUser({{ _.key_ExternalUser }})/extEmailInfo'
+      method: GET
+      meta:
+        id: req_f515aad9dccf7ca19bbfde8ce347d869
+        description: 'Destino: ExtEmailInfo. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_ExternalUser. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — extEmailInfo
+      url: '{{ _.base_url }}/odata/v2/ExternalUser'
+      method: GET
+      meta:
+        id: req_2c8be81b28289141a3bde4c7622030c9
+        description: 'Destino: ExtEmailInfo. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: extEmailInfo
+        disabled: false
+    - name: Navegar — extPersonalInfo
+      url: '{{ _.base_url }}/odata/v2/ExternalUser({{ _.key_ExternalUser }})/extPersonalInfo'
+      method: GET
+      meta:
+        id: req_26bc89e0503e6e20787ba85720c71fc3
+        description: 'Destino: ExtPersonalInfo. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_ExternalUser. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+    - name: Expandir — extPersonalInfo
+      url: '{{ _.base_url }}/odata/v2/ExternalUser'
+      method: GET
+      meta:
+        id: req_ebd343dcab65f8abaa91440eb814acfb
+        description: 'Destino: ExtPersonalInfo. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: extPersonalInfo
+        disabled: false
+    - name: Navegar — extPhoneInfo
+      url: '{{ _.base_url }}/odata/v2/ExternalUser({{ _.key_ExternalUser }})/extPhoneInfo'
+      method: GET
+      meta:
+        id: req_9e7bbd8ca40423afcc713e6d5fef9feb
+        description: 'Destino: ExtPhoneInfo. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_ExternalUser. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — extPhoneInfo
+      url: '{{ _.base_url }}/odata/v2/ExternalUser'
+      method: GET
+      meta:
+        id: req_b8bb991db058ef3483c44e8a56f77a8b
+        description: 'Destino: ExtPhoneInfo. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: extPhoneInfo
+        disabled: false
+- name: Photo
+  meta:
+    id: fld_c6b2fa4aa146b46c3dd148b6f4427f6d
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/Photo'
+    method: GET
+    meta:
+      id: req_26aca885003f6dca3429a1162e662dc6
+      description: 'Chaves: photoType (Edm.Int32), userId (Edm.String). Execute Listar para preencher automaticamente
+        key_Photo. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id005
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: photoType,userId,height,lastModified,lastModifiedDateTime,lastModifiedWithTZ,mimeType,personUUID,photo,photoHash
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"photoType\": \"Edm.Int32\"\
+        , \"userId\": \"Edm.String\"};\nif (first && Object.keys(types).length && Object.keys(types).every(k =>\
+        \ first[k] !== undefined && first[k] !== null)) {\n  const literal = (type, value) => {\n    if (type ===\
+        \ 'Edm.String') return \"'\" + String(value).replaceAll(\"'\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime'\
+        \ || type === 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\\
+        d{4})?\\)\\/$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z', type\
+        \ === 'Edm.DateTime' ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset')\
+        \ + \"'\" + iso + \"'\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return\
+        \ String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n\
+        \  };\n  insomnia.environment.set('key_Photo', Object.entries(types).map(([k,t]) => k + '=' + literal(t,first[k])).join(','));\n\
+        }\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url', data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/Photo'
+    method: GET
+    meta:
+      id: req_9f1a7d4629c8ef5f228fb7da7bc9d01e
+      description: 'Chaves: photoType (Edm.Int32), userId (Edm.String). Execute Listar para preencher automaticamente
+        key_Photo. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: photoType,userId,height,lastModified,lastModifiedDateTime,lastModifiedWithTZ,mimeType,personUUID,photo,photoHash
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/Photo({{ _.key_Photo }})'
+    method: GET
+    meta:
+      id: req_42d2d0852d471436e2fcea1b9248afc0
+      description: 'Chaves: photoType (Edm.Int32), userId (Edm.String). Execute Listar para preencher automaticamente
+        key_Photo. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/Photo'
+    method: GET
+    meta:
+      id: req_bdae00eb4143a9f9592d0ec653986f0f
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: photoType eq 0 and userId eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/Photo/$count'
+    method: GET
+    meta:
+      id: req_eb7fe1206bb14786f5bbbbf54d48717d
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_af35df803489dc8018438b78aa1f2b91
+      description: ''
+    children:
+    - name: Navegar — userNav
+      url: '{{ _.base_url }}/odata/v2/Photo({{ _.key_Photo }})/userNav'
+      method: GET
+      meta:
+        id: req_d948bba74c540a7124fb7453c9717a71
+        description: 'Destino: User. Chaves: photoType (Edm.Int32), userId (Edm.String). Execute Listar para preencher
+          automaticamente key_Photo. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — userNav
+      url: '{{ _.base_url }}/odata/v2/Photo'
+      method: GET
+      meta:
+        id: req_61dcf5a74a30ab726085779ccf00b775
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userNav
+        disabled: false
+- name: User
+  meta:
+    id: fld_6f8de3834537f30069625575c0fdee39
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/User'
+    method: GET
+    meta:
+      id: req_d24c007a0dfe1a827f5e659a5d7dc02b
+      description: 'Chaves: userId (Edm.String). Execute Listar para preencher automaticamente key_User. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id006
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: userId,addressLine1,addressLine2,addressLine3,assignmentUUID,benchStrength,bonusBudgetAmount,bonusTarget,businessPhone
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"userId\": \"Edm.String\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_User', Object.entries(types).map(([k,t]) => k + '=' + literal(t,first[k])).join(','));\n\
+        }\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url', data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/User'
+    method: GET
+    meta:
+      id: req_86578aa8ce7f0b6329f2c7f033fde54e
+      description: 'Chaves: userId (Edm.String). Execute Listar para preencher automaticamente key_User. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: userId,addressLine1,addressLine2,addressLine3,assignmentUUID,benchStrength,bonusBudgetAmount,bonusTarget,businessPhone
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})'
+    method: GET
+    meta:
+      id: req_9ab2159f869cd8ef9275d3597c829f6b
+      description: 'Chaves: userId (Edm.String). Execute Listar para preencher automaticamente key_User. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/User'
+    method: GET
+    meta:
+      id: req_fc80935328fe05c16928a7d3629c3976
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: userId eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/User/$count'
+    method: GET
+    meta:
+      id: req_bfa3b43cf9f4c4b9bba05cbf37ed961e
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_72f8a65f5d1661846d98fa033c8ded0e
+      description: ''
+    children:
+    - name: Navegar — approvedByOfEmployeeTimeSheetNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/approvedByOfEmployeeTimeSheetNav'
+      method: GET
+      meta:
+        id: req_f5a50cc602c9980936ad299fe655dc73
+        description: 'Destino: EmployeeTimeSheet. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — approvedByOfEmployeeTimeSheetNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_1e4ccae92673c62a22241a8a59dd0403
+        description: 'Destino: EmployeeTimeSheet. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: approvedByOfEmployeeTimeSheetNav
+        disabled: false
+    - name: Navegar — atsUserIdOfONB2ProcessTriggerNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/atsUserIdOfONB2ProcessTriggerNav'
+      method: GET
+      meta:
+        id: req_fe5921cf09617de8791f78ad3220ed1b
+        description: 'Destino: ONB2ProcessTrigger. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — atsUserIdOfONB2ProcessTriggerNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_32f450b44c1028eccbe87ce48f5e1391
+        description: 'Destino: ONB2ProcessTrigger. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: atsUserIdOfONB2ProcessTriggerNav
+        disabled: false
+    - name: Navegar — auditUserSysIdOfOneTimeDeductionNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/auditUserSysIdOfOneTimeDeductionNav'
+      method: GET
+      meta:
+        id: req_9f5d4555035313ded7080e7b241e3299
+        description: 'Destino: OneTimeDeduction. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — auditUserSysIdOfOneTimeDeductionNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_1d32ae2c90af7914b9512aafe393800d
+        description: 'Destino: OneTimeDeduction. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: auditUserSysIdOfOneTimeDeductionNav
+        disabled: false
+    - name: Navegar — benchStrengthNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/benchStrengthNav'
+      method: GET
+      meta:
+        id: req_a0c6106dd4fa29034a6c2c8bc3745292
+        description: 'Destino: PicklistOption. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — benchStrengthNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_c07c3ad8455e16f65a0d9bbad7ab6779
+        description: 'Destino: PicklistOption. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: benchStrengthNav
+        disabled: false
+    - name: Navegar — buddyUserOfONB2BuddyActivityNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/buddyUserOfONB2BuddyActivityNav'
+      method: GET
+      meta:
+        id: req_22c35b83129e1a48128fa87b5d9d016c
+        description: 'Destino: ONB2BuddyActivity. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — buddyUserOfONB2BuddyActivityNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_ef1b6068bd3925b800c971de553aba87
+        description: 'Destino: ONB2BuddyActivity. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: buddyUserOfONB2BuddyActivityNav
+        disabled: false
+    - name: Navegar — budgetHolderIdOfSpotAwardNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/budgetHolderIdOfSpotAwardNav'
+      method: GET
+      meta:
+        id: req_21d54c280bbd4e7d2014c599c677015f
+        description: 'Destino: SpotAward. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — budgetHolderIdOfSpotAwardNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_f97b8870be04c3492e890891ddf6fd89
+        description: 'Destino: SpotAward. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: budgetHolderIdOfSpotAwardNav
+        disabled: false
+    - name: Navegar — companyRepresentativeOfLegalEntitySAUNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/companyRepresentativeOfLegalEntitySAUNav'
+      method: GET
+      meta:
+        id: req_f17bf37ed6e991adeea2633aca46aaf0
+        description: 'Destino: LegalEntitySAU. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — companyRepresentativeOfLegalEntitySAUNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_fd5973fe60ee4cc7dab003f9838870e8
+        description: 'Destino: LegalEntitySAU. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: companyRepresentativeOfLegalEntitySAUNav
+        disabled: false
+    - name: Navegar — completedByOfONB2BuddyActivityNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/completedByOfONB2BuddyActivityNav'
+      method: GET
+      meta:
+        id: req_303919fcee0e1621e68250c5736ff266
+        description: 'Destino: ONB2BuddyActivity. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — completedByOfONB2BuddyActivityNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_11fe5a5e8620dca4e28d9a4f7015f904
+        description: 'Destino: ONB2BuddyActivity. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: completedByOfONB2BuddyActivityNav
+        disabled: false
+    - name: Navegar — completedByOfONB2ProcessTaskNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/completedByOfONB2ProcessTaskNav'
+      method: GET
+      meta:
+        id: req_b5d3e89bb5ed6767058b74217e14460e
+        description: 'Destino: ONB2ProcessTask. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — completedByOfONB2ProcessTaskNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_e63390f03ac20611ca4f6a4f62c78df3
+        description: 'Destino: ONB2ProcessTask. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: completedByOfONB2ProcessTaskNav
+        disabled: false
+    - name: Navegar — contactEmployeeIdOfBenefitContactNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/contactEmployeeIdOfBenefitContactNav'
+      method: GET
+      meta:
+        id: req_52b8e70183ca15de22c9627499d4c88b
+        description: 'Destino: BenefitContact. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — contactEmployeeIdOfBenefitContactNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_6f621242b790a31902c2f3ab8f9cedcf
+        description: 'Destino: BenefitContact. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: contactEmployeeIdOfBenefitContactNav
+        disabled: false
+    - name: Navegar — costCenterManagerOfFOCostCenterNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/costCenterManagerOfFOCostCenterNav'
+      method: GET
+      meta:
+        id: req_cca4d6240ec519f4ffcc906478c3d2d1
+        description: 'Destino: FOCostCenter. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — costCenterManagerOfFOCostCenterNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_b832cfa1ad8c2c31b3e06e53e1b18514
+        description: 'Destino: FOCostCenter. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: costCenterManagerOfFOCostCenterNav
+        disabled: false
+    - name: Navegar — declinedByOfComplianceDocumentFlowNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/declinedByOfComplianceDocumentFlowNav'
+      method: GET
+      meta:
+        id: req_cab1d3392d4689470014d62b6fb8c855
+        description: 'Destino: ComplianceDocumentFlow. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — declinedByOfComplianceDocumentFlowNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_f8c5e228f24aae8105027c088ed5ba0f
+        description: 'Destino: ComplianceDocumentFlow. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: declinedByOfComplianceDocumentFlowNav
+        disabled: false
+    - name: Navegar — directReports
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/directReports'
+      method: GET
+      meta:
+        id: req_b03a707b4cedc90cf0fc98bc7921cca3
+        description: 'Destino: User. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — directReports
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_2a2589b006efc790872686a1e07cfd40
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: directReports
+        disabled: false
+    - name: Navegar — empInfo
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/empInfo'
+      method: GET
+      meta:
+        id: req_1181724b6fd0c8aacb81dce1a9adf884
+        description: 'Destino: EmpEmployment. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — empInfo
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_73239b8ef0a62a5eb64d832cf966fe02
+        description: 'Destino: EmpEmployment. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: empInfo
+        disabled: false
+    - name: Navegar — ethnicityNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/ethnicityNav'
+      method: GET
+      meta:
+        id: req_720f359df5cd7835298d35c9c27222a1
+        description: 'Destino: PicklistOption. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — ethnicityNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_005f11c89beb53c7a8ca2ff8e1f2e9ce
+        description: 'Destino: PicklistOption. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: ethnicityNav
+        disabled: false
+    - name: Navegar — eventPublishedByOfBenefitEventProcessingLogNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/eventPublishedByOfBenefitEventProcessingLogNav'
+      method: GET
+      meta:
+        id: req_562083b1a32ec491c9a21bb8ad756d92
+        description: 'Destino: BenefitEventProcessingLog. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — eventPublishedByOfBenefitEventProcessingLogNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_f699b5604910dc9b9634b0d3d79dc0b0
+        description: 'Destino: BenefitEventProcessingLog. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: eventPublishedByOfBenefitEventProcessingLogNav
+        disabled: false
+    - name: Navegar — externalCodeOfSkillProfileNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/externalCodeOfSkillProfileNav'
+      method: GET
+      meta:
+        id: req_f58018a5bdd37fa16c8babaa2c7edd78
+        description: 'Destino: SkillProfile. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — externalCodeOfSkillProfileNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_61e0e111c78459c63aafc94de52b3142
+        description: 'Destino: SkillProfile. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: externalCodeOfSkillProfileNav
+        disabled: false
+    - name: Navegar — headOfUnitOfFOBusinessUnitNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/headOfUnitOfFOBusinessUnitNav'
+      method: GET
+      meta:
+        id: req_4d7f1b001e7a0bd7b3a6b2ce9224de03
+        description: 'Destino: FOBusinessUnit. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — headOfUnitOfFOBusinessUnitNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_254a283a5ea6fd2815dbd8527dd5b3bd
+        description: 'Destino: FOBusinessUnit. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: headOfUnitOfFOBusinessUnitNav
+        disabled: false
+    - name: Navegar — headOfUnitOfFODepartmentNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/headOfUnitOfFODepartmentNav'
+      method: GET
+      meta:
+        id: req_288a3ddab812af1a2f722cc416b3d26a
+        description: 'Destino: FODepartment. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — headOfUnitOfFODepartmentNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_0a415bd122539a61aa924b780557f0bd
+        description: 'Destino: FODepartment. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: headOfUnitOfFODepartmentNav
+        disabled: false
+    - name: Navegar — headOfUnitOfFODivisionNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/headOfUnitOfFODivisionNav'
+      method: GET
+      meta:
+        id: req_04b3b11e059fef3fb8d9bfad3baffe31
+        description: 'Destino: FODivision. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — headOfUnitOfFODivisionNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_4f9e41bbb7869f24dad5d1d1ceb35bd5
+        description: 'Destino: FODivision. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: headOfUnitOfFODivisionNav
+        disabled: false
+    - name: Navegar — hr
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/hr'
+      method: GET
+      meta:
+        id: req_c10682522f184011c1ce2490d04e27b0
+        description: 'Destino: User. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — hr
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_85c9c08d784ef87b1cb2ad707af51a72
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: hr
+        disabled: false
+    - name: Navegar — hrReports
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/hrReports'
+      method: GET
+      meta:
+        id: req_b72abbaee4fc1e1258958b386648d014
+        description: 'Destino: User. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — hrReports
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_c68cf95e01ea912b76f052ad71516480
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: hrReports
+        disabled: false
+    - name: Navegar — impactOfLossNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/impactOfLossNav'
+      method: GET
+      meta:
+        id: req_5ed098d0259ba90677f7bbb2282a02d8
+        description: 'Destino: PicklistOption. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — impactOfLossNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_8dc1ec38701b6e37314c7b21c92844f1
+        description: 'Destino: PicklistOption. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: impactOfLossNav
+        disabled: false
+    - name: Navegar — incumbentOfPositionNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/incumbentOfPositionNav'
+      method: GET
+      meta:
+        id: req_337d6b5be76129ea46f7b96994830017
+        description: 'Destino: Position. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — incumbentOfPositionNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_52c6635f86d526e44ef89a9a2b4f0c51
+        description: 'Destino: Position. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: incumbentOfPositionNav
+        disabled: false
+    - name: Navegar — lastNudgedByOfONB2BuddyActivityNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/lastNudgedByOfONB2BuddyActivityNav'
+      method: GET
+      meta:
+        id: req_9992e6442d89860c8ea3ba7c6ae8c996
+        description: 'Destino: ONB2BuddyActivity. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — lastNudgedByOfONB2BuddyActivityNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_4c5febf9af3619462bafe398ddea76f7
+        description: 'Destino: ONB2BuddyActivity. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastNudgedByOfONB2BuddyActivityNav
+        disabled: false
+    - name: Navegar — manager
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/manager'
+      method: GET
+      meta:
+        id: req_618fa4bdb78c1a46395f6b929f220859
+        description: 'Destino: User. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — manager
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_8466848d053024e39dc481de3cb2c06f
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: manager
+        disabled: false
+    - name: Navegar — managerOfONB2ProcessNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/managerOfONB2ProcessNav'
+      method: GET
+      meta:
+        id: req_1d3f6200befe1353281066bfcd35e4f5
+        description: 'Destino: ONB2Process. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — managerOfONB2ProcessNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_41770e840acf4afe610501e67e5af87b
+        description: 'Destino: ONB2Process. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: managerOfONB2ProcessNav
+        disabled: false
+    - name: Navegar — matrixManager
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/matrixManager'
+      method: GET
+      meta:
+        id: req_43d3b4a8e0aef353fa7f4cd36a11d626
+        description: 'Destino: User. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — matrixManager
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_d22bf292cb5730cd1d2076e18ccd200b
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: matrixManager
+        disabled: false
+    - name: Navegar — matrixReports
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/matrixReports'
+      method: GET
+      meta:
+        id: req_a789a753986c0e820f53eb4b0e3e1aa4
+        description: 'Destino: User. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — matrixReports
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_574d75247dc04325b9db3fecaf42db9e
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: matrixReports
+        disabled: false
+    - name: Navegar — menteeOfMentoringProgramMatchedParticipantNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/menteeOfMentoringProgramMatchedParticipantNav'
+      method: GET
+      meta:
+        id: req_27325c97716269851cdd2bd37bd03260
+        description: 'Destino: MentoringProgramMatchedParticipant. Chaves: userId (Edm.String). Execute Listar para
+          preencher automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — menteeOfMentoringProgramMatchedParticipantNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_999ac38d6f430d3ec7dc927f3fbe038f
+        description: 'Destino: MentoringProgramMatchedParticipant. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: menteeOfMentoringProgramMatchedParticipantNav
+        disabled: false
+    - name: Navegar — mentorOfMentoringProgramMatchedParticipantNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/mentorOfMentoringProgramMatchedParticipantNav'
+      method: GET
+      meta:
+        id: req_f7574dbf0a0c2e7b0018364b9beecb6c
+        description: 'Destino: MentoringProgramMatchedParticipant. Chaves: userId (Edm.String). Execute Listar para
+          preencher automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — mentorOfMentoringProgramMatchedParticipantNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_5bbe9751db46cb74d9854600a387c7f9
+        description: 'Destino: MentoringProgramMatchedParticipant. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: mentorOfMentoringProgramMatchedParticipantNav
+        disabled: false
+    - name: Navegar — nominatorIdOfSpotAwardNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/nominatorIdOfSpotAwardNav'
+      method: GET
+      meta:
+        id: req_baec8c9b9d7b0fc51526acbb57bf31d8
+        description: 'Destino: SpotAward. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — nominatorIdOfSpotAwardNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_b533c0bb811d465a23a5aa314b3bc73b
+        description: 'Destino: SpotAward. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: nominatorIdOfSpotAwardNav
+        disabled: false
+    - name: Navegar — ownerOfTalentPoolNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/ownerOfTalentPoolNav'
+      method: GET
+      meta:
+        id: req_6ec40d9a06f788924134c352a6533532
+        description: 'Destino: TalentPool. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — ownerOfTalentPoolNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_f4b78e0e3771c84e65b74bc5f03aa27d
+        description: 'Destino: TalentPool. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: ownerOfTalentPoolNav
+        disabled: false
+    - name: Navegar — passiveUserOfMentoringProgramMatchedParticipantNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/passiveUserOfMentoringProgramMatchedParticipantNav'
+      method: GET
+      meta:
+        id: req_acde817c3400b26dcdaf76bd0d621f76
+        description: 'Destino: MentoringProgramMatchedParticipant. Chaves: userId (Edm.String). Execute Listar para
+          preencher automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — passiveUserOfMentoringProgramMatchedParticipantNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_c4283a421c778048063f55f66ccd8c99
+        description: 'Destino: MentoringProgramMatchedParticipant. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: passiveUserOfMentoringProgramMatchedParticipantNav
+        disabled: false
+    - name: Navegar — pronounsNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/pronounsNav'
+      method: GET
+      meta:
+        id: req_d5d18f1709c4ea5493578b0a5fbc1eae
+        description: 'Destino: PicklistOption. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — pronounsNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_944b8915fac48701fca0655a2349730f
+        description: 'Destino: PicklistOption. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: pronounsNav
+        disabled: false
+    - name: Navegar — proxy
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/proxy'
+      method: GET
+      meta:
+        id: req_d79e5380d1b50a32e45dffb958d3e1d4
+        description: 'Destino: User. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — proxy
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_8ced3f2c3a37237352a044f6f8501421
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: proxy
+        disabled: false
+    - name: Navegar — reasonForLeavingNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/reasonForLeavingNav'
+      method: GET
+      meta:
+        id: req_0c7fe9f36efd14e470b364366f140c55
+        description: 'Destino: PicklistOption. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — reasonForLeavingNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_6769966f64af5f4c46fd81c0289727fd
+        description: 'Destino: PicklistOption. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: reasonForLeavingNav
+        disabled: false
+    - name: Navegar — rehireUserOfONB2ProcessTriggerNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/rehireUserOfONB2ProcessTriggerNav'
+      method: GET
+      meta:
+        id: req_e1371b9cb31b160168877ce261d6c316
+        description: 'Destino: ONB2ProcessTrigger. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — rehireUserOfONB2ProcessTriggerNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_f20d283b73e5242cd76f5496d608806c
+        description: 'Destino: ONB2ProcessTrigger. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: rehireUserOfONB2ProcessTriggerNav
+        disabled: false
+    - name: Navegar — reloWillingNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/reloWillingNav'
+      method: GET
+      meta:
+        id: req_23f40d2ffaf34e7f3aedd025c45a1a85
+        description: 'Destino: PicklistOption. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — reloWillingNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_b2cfad28fa539a7f4634854cf286e9b0
+        description: 'Destino: PicklistOption. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: reloWillingNav
+        disabled: false
+    - name: Navegar — reprocessRequestedByOfBenefitEventProcessingLogNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/reprocessRequestedByOfBenefitEventProcessingLogNav'
+      method: GET
+      meta:
+        id: req_8bb92fcb6fa3e1fdf1823909934e71ac
+        description: 'Destino: BenefitEventProcessingLog. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — reprocessRequestedByOfBenefitEventProcessingLogNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_9d813c9ce22b68e4c38b6c81d926289d
+        description: 'Destino: BenefitEventProcessingLog. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: reprocessRequestedByOfBenefitEventProcessingLogNav
+        disabled: false
+    - name: Navegar — restartedByOfONB2ProcessTaskNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/restartedByOfONB2ProcessTaskNav'
+      method: GET
+      meta:
+        id: req_9e6fa1697f16d6f76f5bef5779226809
+        description: 'Destino: ONB2ProcessTask. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — restartedByOfONB2ProcessTaskNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_1963c80446a85b03c4ddcef34509ff3d
+        description: 'Destino: ONB2ProcessTask. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: restartedByOfONB2ProcessTaskNav
+        disabled: false
+    - name: Navegar — riskOfLossNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/riskOfLossNav'
+      method: GET
+      meta:
+        id: req_acd169e0cddf04abc861f69e1654a567
+        description: 'Destino: PicklistOption. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — riskOfLossNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_f60fc31d3c4e086dfed498f4c178fa40
+        description: 'Destino: PicklistOption. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: riskOfLossNav
+        disabled: false
+    - name: Navegar — salutationNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/salutationNav'
+      method: GET
+      meta:
+        id: req_922330ce2bae05a377331867a8c4a9ae
+        description: 'Destino: PicklistOption. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — salutationNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_1750622ade95120bbea4bafe4d1a39dc
+        description: 'Destino: PicklistOption. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: salutationNav
+        disabled: false
+    - name: Navegar — secondManager
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/secondManager'
+      method: GET
+      meta:
+        id: req_7aaac2d1f259525e058374a25fae7666
+        description: 'Destino: User. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — secondManager
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_c9804c52d1e8bd43e0520971d9177c80
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: secondManager
+        disabled: false
+    - name: Navegar — secondReports
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/secondReports'
+      method: GET
+      meta:
+        id: req_bbe79253c41de8e7c3d1b69efa88b79e
+        description: 'Destino: User. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — secondReports
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_d580f6e24cc6f1539275707d40d20d52
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: secondReports
+        disabled: false
+    - name: Navegar — subjectUserOfComplianceDocumentFlowNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/subjectUserOfComplianceDocumentFlowNav'
+      method: GET
+      meta:
+        id: req_84523983f5deb1a761fd9914d59d99c2
+        description: 'Destino: ComplianceDocumentFlow. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — subjectUserOfComplianceDocumentFlowNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_1a99c89a4258f93f1b66ddce18357588
+        description: 'Destino: ComplianceDocumentFlow. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: subjectUserOfComplianceDocumentFlowNav
+        disabled: false
+    - name: Navegar — subjectUserOfONB2BuddyActivityNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/subjectUserOfONB2BuddyActivityNav'
+      method: GET
+      meta:
+        id: req_97913667afd66972969dea89e90b9adf
+        description: 'Destino: ONB2BuddyActivity. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — subjectUserOfONB2BuddyActivityNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_604bb52c8dcf38ef05c42d3669d0f73e
+        description: 'Destino: ONB2BuddyActivity. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: subjectUserOfONB2BuddyActivityNav
+        disabled: false
+    - name: Navegar — subjectUserOfONB2DataCollectionUserConfigNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/subjectUserOfONB2DataCollectionUserConfigNav'
+      method: GET
+      meta:
+        id: req_0e4c78596a1d711100c6882a9517a612
+        description: 'Destino: ONB2DataCollectionUserConfig. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — subjectUserOfONB2DataCollectionUserConfigNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_1b6e7729626acdcb15716ec0d9544d9b
+        description: 'Destino: ONB2DataCollectionUserConfig. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: subjectUserOfONB2DataCollectionUserConfigNav
+        disabled: false
+    - name: Navegar — submittedByOfEmployeeTimeSheetNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/submittedByOfEmployeeTimeSheetNav'
+      method: GET
+      meta:
+        id: req_e71bf7a08131d43178da75de698ce6d3
+        description: 'Destino: EmployeeTimeSheet. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — submittedByOfEmployeeTimeSheetNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_1d8ccaa1eed1f7e4f2ce4cd19a46e09a
+        description: 'Destino: EmployeeTimeSheet. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: submittedByOfEmployeeTimeSheetNav
+        disabled: false
+    - name: Navegar — sysSourceNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/sysSourceNav'
+      method: GET
+      meta:
+        id: req_ea47ad1f925beef268424f0f27787ae4
+        description: 'Destino: PicklistOption. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — sysSourceNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_afad5eff715edc87482ba86796d5cb85
+        description: 'Destino: PicklistOption. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: sysSourceNav
+        disabled: false
+    - name: Navegar — userIdOfAccrualCalculationBaseNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfAccrualCalculationBaseNav'
+      method: GET
+      meta:
+        id: req_55d70188113017e6beb85e85fd14ff0b
+        description: 'Destino: AccrualCalculationBase. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfAccrualCalculationBaseNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_cfd95ca154363e04ad2f931a97ce244e
+        description: 'Destino: AccrualCalculationBase. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfAccrualCalculationBaseNav
+        disabled: false
+    - name: Navegar — userIdOfAllowanceRecordingNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfAllowanceRecordingNav'
+      method: GET
+      meta:
+        id: req_a386a6ee57a21cfdfbedfd6bcf66bf54
+        description: 'Destino: AllowanceRecording. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfAllowanceRecordingNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_2353fb1f159d1eef6a71271f564ca6d9
+        description: 'Destino: AllowanceRecording. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfAllowanceRecordingNav
+        disabled: false
+    - name: Navegar — userIdOfEmployeeTimeGroupNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfEmployeeTimeGroupNav'
+      method: GET
+      meta:
+        id: req_bc190bd04e8f7697f5aab02638a596f9
+        description: 'Destino: EmployeeTimeGroup. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfEmployeeTimeGroupNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_e94001ba6b2b2d80d26692b4fe453de6
+        description: 'Destino: EmployeeTimeGroup. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfEmployeeTimeGroupNav
+        disabled: false
+    - name: Navegar — userIdOfEmployeeTimeNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfEmployeeTimeNav'
+      method: GET
+      meta:
+        id: req_a337e1aa4ba0576ec08611518cc6950f
+        description: 'Destino: EmployeeTime. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfEmployeeTimeNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_584719214c12059202f544e331eedb53
+        description: 'Destino: EmployeeTime. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfEmployeeTimeNav
+        disabled: false
+    - name: Navegar — userIdOfEmployeeTimeSheetNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfEmployeeTimeSheetNav'
+      method: GET
+      meta:
+        id: req_78848f1a8bd66d0e7081a05931a8a8e6
+        description: 'Destino: EmployeeTimeSheet. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfEmployeeTimeSheetNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_ee153b0f676572e5e55e5a99c6d97d43
+        description: 'Destino: EmployeeTimeSheet. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfEmployeeTimeSheetNav
+        disabled: false
+    - name: Navegar — userIdOfExternalTimeDataNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfExternalTimeDataNav'
+      method: GET
+      meta:
+        id: req_9ed6909b7e3b4903845cf500298d15f6
+        description: 'Destino: ExternalTimeData. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfExternalTimeDataNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_eed03c27b7a266707c82e23daa399e19
+        description: 'Destino: ExternalTimeData. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfExternalTimeDataNav
+        disabled: false
+    - name: Navegar — userIdOfExternalTimeRecordNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfExternalTimeRecordNav'
+      method: GET
+      meta:
+        id: req_ff7522f9cf8b406459c10339789655aa
+        description: 'Destino: ExternalTimeRecord. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfExternalTimeRecordNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_9231b1343dbf9fd6986aacfe53ac95f8
+        description: 'Destino: ExternalTimeRecord. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfExternalTimeRecordNav
+        disabled: false
+    - name: Navegar — userIdOfPositionRightToReturnNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfPositionRightToReturnNav'
+      method: GET
+      meta:
+        id: req_7e9f9c3a740d07812d06bddd035c671d
+        description: 'Destino: PositionRightToReturn. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfPositionRightToReturnNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_b0984f7d5ff539a2921e4058e4e74d49
+        description: 'Destino: PositionRightToReturn. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfPositionRightToReturnNav
+        disabled: false
+    - name: Navegar — userIdOfSpotAwardBudgetNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfSpotAwardBudgetNav'
+      method: GET
+      meta:
+        id: req_43455b38fd94f75621288996844bd677
+        description: 'Destino: SpotAwardBudget. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfSpotAwardBudgetNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_c73779d79166120233fa7d212ea1be77
+        description: 'Destino: SpotAwardBudget. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfSpotAwardBudgetNav
+        disabled: false
+    - name: Navegar — userIdOfSpotAwardNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfSpotAwardNav'
+      method: GET
+      meta:
+        id: req_0acd0f1be32332d42c68499274ef562c
+        description: 'Destino: SpotAward. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfSpotAwardNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_c2b29dd3131c898232b23eaecadfc538
+        description: 'Destino: SpotAward. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfSpotAwardNav
+        disabled: false
+    - name: Navegar — userIdOfTemporaryTimeInformationNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfTemporaryTimeInformationNav'
+      method: GET
+      meta:
+        id: req_ce34b3598d7368977218849a6fcb0d3f
+        description: 'Destino: TemporaryTimeInformation. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfTemporaryTimeInformationNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_5c2c9267e15295b3bd72bec6934cf313
+        description: 'Destino: TemporaryTimeInformation. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfTemporaryTimeInformationNav
+        disabled: false
+    - name: Navegar — userIdOfTimeAccountNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfTimeAccountNav'
+      method: GET
+      meta:
+        id: req_c6b3f5bd663b1623457b4368f26d1afd
+        description: 'Destino: TimeAccount. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfTimeAccountNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_409267a895c2b8b82747438ffb98b0c2
+        description: 'Destino: TimeAccount. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfTimeAccountNav
+        disabled: false
+    - name: Navegar — userIdOfTimeAccountPayoutNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfTimeAccountPayoutNav'
+      method: GET
+      meta:
+        id: req_354b22f180f32e62c257439357c24258
+        description: 'Destino: TimeAccountPayout. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfTimeAccountPayoutNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_7235cfe7a768061733fed112a2b2d062
+        description: 'Destino: TimeAccountPayout. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfTimeAccountPayoutNav
+        disabled: false
+    - name: Navegar — userIdOfTimeAccountSnapshotNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfTimeAccountSnapshotNav'
+      method: GET
+      meta:
+        id: req_5727fe16737e19f9629c11348ac2608f
+        description: 'Destino: TimeAccountSnapshot. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfTimeAccountSnapshotNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_0a8bfee75f68c567d197cb6508aaeb74
+        description: 'Destino: TimeAccountSnapshot. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfTimeAccountSnapshotNav
+        disabled: false
+    - name: Navegar — userIdOfTimeCollectorNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfTimeCollectorNav'
+      method: GET
+      meta:
+        id: req_eb378a056e4c8f7086e83f7a4d49153f
+        description: 'Destino: TimeCollector. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfTimeCollectorNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_68eb4623afac240c34b27b45c88ad3e4
+        description: 'Destino: TimeCollector. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfTimeCollectorNav
+        disabled: false
+    - name: Navegar — userIdOfTimeContainerNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfTimeContainerNav'
+      method: GET
+      meta:
+        id: req_f295d4347f45b74e94bc1509a43b5bcb
+        description: 'Destino: TimeContainer. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfTimeContainerNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_a9b743bdbced3700c013262219a62b6b
+        description: 'Destino: TimeContainer. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfTimeContainerNav
+        disabled: false
+    - name: Navegar — userIdOfTimeRecordingNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfTimeRecordingNav'
+      method: GET
+      meta:
+        id: req_955e95af49c60eb7ac4bc1e90bd36969
+        description: 'Destino: TimeRecording. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfTimeRecordingNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_dc338a783deb9c3bed0591e2871743e5
+        description: 'Destino: TimeRecording. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfTimeRecordingNav
+        disabled: false
+    - name: Navegar — userIdOfWorkScheduleNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userIdOfWorkScheduleNav'
+      method: GET
+      meta:
+        id: req_6f387da93556a2121a15c8878b354149
+        description: 'Destino: WorkSchedule. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userIdOfWorkScheduleNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_ca03bfd902a3260f81c0ca6a81fe78c2
+        description: 'Destino: WorkSchedule. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdOfWorkScheduleNav
+        disabled: false
+    - name: Navegar — userOfONB2ProcessNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userOfONB2ProcessNav'
+      method: GET
+      meta:
+        id: req_78176669e9c50073428e4b201d52a07d
+        description: 'Destino: ONB2Process. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userOfONB2ProcessNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_076d3ce4d3cb09117dfbaa5ab8274dda
+        description: 'Destino: ONB2Process. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userOfONB2ProcessNav
+        disabled: false
+    - name: Navegar — userPermissionsNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userPermissionsNav'
+      method: GET
+      meta:
+        id: req_d128edf8daf9f740c0eb9537f3284d3c
+        description: 'Destino: UserPermissions. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — userPermissionsNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_97d9386bed3a061b60ccc8d89c152fc4
+        description: 'Destino: UserPermissions. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userPermissionsNav
+        disabled: false
+    - name: Navegar — userSysIdOfOneTimeDeductionNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userSysIdOfOneTimeDeductionNav'
+      method: GET
+      meta:
+        id: req_f5bb3a9febb49965295e9125206c9a8c
+        description: 'Destino: OneTimeDeduction. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userSysIdOfOneTimeDeductionNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_6dce37e3308156f336d6b80ae8d64aff
+        description: 'Destino: OneTimeDeduction. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userSysIdOfOneTimeDeductionNav
+        disabled: false
+    - name: Navegar — userSysIdOfRecurringDeductionNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/userSysIdOfRecurringDeductionNav'
+      method: GET
+      meta:
+        id: req_b72690508965abfaaf63058e8ae5b90f
+        description: 'Destino: RecurringDeduction. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — userSysIdOfRecurringDeductionNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_fa355b0f8c15d33957576dae81e9e79f
+        description: 'Destino: RecurringDeduction. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userSysIdOfRecurringDeductionNav
+        disabled: false
+    - name: Navegar — usersSysIdOfEmpCostDistributionNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/usersSysIdOfEmpCostDistributionNav'
+      method: GET
+      meta:
+        id: req_88c0552fc106ce575434bfef5f7016df
+        description: 'Destino: EmpCostDistribution. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — usersSysIdOfEmpCostDistributionNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_3419f9b55bacd440ded967025b1620f8
+        description: 'Destino: EmpCostDistribution. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: usersSysIdOfEmpCostDistributionNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitClaimAccumulationNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitClaimAccumulationNav'
+      method: GET
+      meta:
+        id: req_631eecccddfdee627607f6e7468ee134
+        description: 'Destino: BenefitClaimAccumulation. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitClaimAccumulationNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_e292062b24151878197a505bb62efbd2
+        description: 'Destino: BenefitClaimAccumulation. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitClaimAccumulationNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitEligibleUserNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitEligibleUserNav'
+      method: GET
+      meta:
+        id: req_5a590e11bc6ef527e45f6e4f025584e7
+        description: 'Destino: BenefitEligibleUser. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitEligibleUserNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_f0f600733fd95e29152b58b5f2a684b8
+        description: 'Destino: BenefitEligibleUser. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitEligibleUserNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitEmployeeClaimNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitEmployeeClaimNav'
+      method: GET
+      meta:
+        id: req_513c1f4b0dff6dabd9da918d12080796
+        description: 'Destino: BenefitEmployeeClaim. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitEmployeeClaimNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_e62e95565ed365f15e51eb2c523493a2
+        description: 'Destino: BenefitEmployeeClaim. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitEmployeeClaimNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitEmployeeLifeEventDeclarationFormNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitEmployeeLifeEventDeclarationFormNav'
+      method: GET
+      meta:
+        id: req_d50f418df13d79ac4af3adbff2be86cd
+        description: 'Destino: BenefitEmployeeLifeEventDeclarationForm. Chaves: userId (Edm.String). Execute Listar
+          para preencher automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitEmployeeLifeEventDeclarationFormNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_a5d112b8478d30409044c21b2f63ea9a
+        description: 'Destino: BenefitEmployeeLifeEventDeclarationForm. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitEmployeeLifeEventDeclarationFormNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitEmployeeOptoutRequestsNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitEmployeeOptoutRequestsNav'
+      method: GET
+      meta:
+        id: req_067ec60d8e4f2770bbbc1addaee7a841
+        description: 'Destino: BenefitEmployeeOptoutRequests. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitEmployeeOptoutRequestsNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_ba1456ab133a14a8775e76cf40674121
+        description: 'Destino: BenefitEmployeeOptoutRequests. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitEmployeeOptoutRequestsNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitEnrollmentGroupNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitEnrollmentGroupNav'
+      method: GET
+      meta:
+        id: req_40bc57d9fa2f4e1971ce71ede271062c
+        description: 'Destino: BenefitEnrollmentGroup. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitEnrollmentGroupNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_8c36025b0dc362fef10b4552df28eec1
+        description: 'Destino: BenefitEnrollmentGroup. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitEnrollmentGroupNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitEnrollmentNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitEnrollmentNav'
+      method: GET
+      meta:
+        id: req_82f21fb3d98f904c4cfc90ae2eaac3a4
+        description: 'Destino: BenefitEnrollment. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitEnrollmentNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_c38119b71cbca6f21fd3b5de7745c2c8
+        description: 'Destino: BenefitEnrollment. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitEnrollmentNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitEventProcessingLogNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitEventProcessingLogNav'
+      method: GET
+      meta:
+        id: req_e3855aa6de38c5a311f153baa40ae5df
+        description: 'Destino: BenefitEventProcessingLog. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitEventProcessingLogNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_bb5e16cec972666075b6bde9850711d6
+        description: 'Destino: BenefitEventProcessingLog. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitEventProcessingLogNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitProgramEnrollmentNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitProgramEnrollmentNav'
+      method: GET
+      meta:
+        id: req_3dfdf49e636a9a92161813303a05eb5a
+        description: 'Destino: BenefitProgramEnrollment. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitProgramEnrollmentNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_549038b3d2b050218a7c3be4d34a2801
+        description: 'Destino: BenefitProgramEnrollment. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitProgramEnrollmentNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitsExceptionNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitsExceptionNav'
+      method: GET
+      meta:
+        id: req_7cfcb144a348b9e7764586869ade97be
+        description: 'Destino: BenefitsException. Chaves: userId (Edm.String). Execute Listar para preencher automaticamente
+          key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitsExceptionNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_f45d63c998f32e90f235b25f7df57778
+        description: 'Destino: BenefitsException. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitsExceptionNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitsIntegrationOneTimeInfoNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitsIntegrationOneTimeInfoNav'
+      method: GET
+      meta:
+        id: req_10fd7d03f35b12b7db501b81da68fd80
+        description: 'Destino: BenefitsIntegrationOneTimeInfo. Chaves: userId (Edm.String). Execute Listar para
+          preencher automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitsIntegrationOneTimeInfoNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_3881f08b33e9ba6ba1ab8ffc5e345e69
+        description: 'Destino: BenefitsIntegrationOneTimeInfo. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitsIntegrationOneTimeInfoNav
+        disabled: false
+    - name: Navegar — workerIdOfBenefitsIntegrationRecurringInfoNav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerIdOfBenefitsIntegrationRecurringInfoNav'
+      method: GET
+      meta:
+        id: req_75c65f2a6e52f7b7302344fb9d1c92f8
+        description: 'Destino: BenefitsIntegrationRecurringInfo. Chaves: userId (Edm.String). Execute Listar para
+          preencher automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerIdOfBenefitsIntegrationRecurringInfoNav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_539c9bd378a33e4fdefc6af48b6980d8
+        description: 'Destino: BenefitsIntegrationRecurringInfo. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerIdOfBenefitsIntegrationRecurringInfoNav
+        disabled: false
+    - name: Navegar — workerOfPaymentInformationV3Nav
+      url: '{{ _.base_url }}/odata/v2/User({{ _.key_User }})/workerOfPaymentInformationV3Nav'
+      method: GET
+      meta:
+        id: req_293b415a6bb0173075d6b77f83cdd728
+        description: 'Destino: PaymentInformationV3. Chaves: userId (Edm.String). Execute Listar para preencher
+          automaticamente key_User. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — workerOfPaymentInformationV3Nav
+      url: '{{ _.base_url }}/odata/v2/User'
+      method: GET
+      meta:
+        id: req_43aa5adfbd2cc6a66e35129e92e0f853
+        description: 'Destino: PaymentInformationV3. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: workerOfPaymentInformationV3Nav
+        disabled: false
+- name: UserAccount
+  meta:
+    id: fld_54331faca85237332772aaef742484b7
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/UserAccount'
+    method: GET
+    meta:
+      id: req_83a50f1519adabba17ac933719797dfb
+      description: 'Chaves: username (Edm.String). Execute Listar para preencher automaticamente key_UserAccount.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id007
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: username,accountId,accountIsLocked,accountStatus,accountUuid,createdDateTime,defaultLocale,email,lastInactivationDateTime
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"username\": \"Edm.String\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_UserAccount', Object.entries(types).map(([k,t]) => k +\
+        \ '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/UserAccount'
+    method: GET
+    meta:
+      id: req_f53a834bea90a2ae4682a2e78df3a720
+      description: 'Chaves: username (Edm.String). Execute Listar para preencher automaticamente key_UserAccount.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: username,accountId,accountIsLocked,accountStatus,accountUuid,createdDateTime,defaultLocale,email,lastInactivationDateTime
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/UserAccount({{ _.key_UserAccount }})'
+    method: GET
+    meta:
+      id: req_188bdc62ab07e6ec06848cceb96a44d9
+      description: 'Chaves: username (Edm.String). Execute Listar para preencher automaticamente key_UserAccount.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/UserAccount'
+    method: GET
+    meta:
+      id: req_a471060f3749ce3d88d8e2ddb430556b
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: username eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/UserAccount/$count'
+    method: GET
+    meta:
+      id: req_a83d8b70828d8bf2297c4dbb735064a6
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_255fe45782932dff149c30b78bafbdff
+      description: ''
+    children:
+    - name: Navegar — user
+      url: '{{ _.base_url }}/odata/v2/UserAccount({{ _.key_UserAccount }})/user'
+      method: GET
+      meta:
+        id: req_2a3a231729ab787c34dea919888ec51c
+        description: 'Destino: User. Chaves: username (Edm.String). Execute Listar para preencher automaticamente
+          key_UserAccount. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — user
+      url: '{{ _.base_url }}/odata/v2/UserAccount'
+      method: GET
+      meta:
+        id: req_8fb9d9c05e8dc9e9cf6567bba7757307
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: user
+        disabled: false
+- name: UserPermissions
+  meta:
+    id: fld_f019a6874bbf55d7d222f006ddffc1dd
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/UserPermissions'
+    method: GET
+    meta:
+      id: req_4b8bc2f095e7901276f1d2e07fd946ef
+      description: 'Chaves: userId (Edm.Byte). Execute Listar para preencher automaticamente key_UserPermissions.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id008
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: userId,addressLine1,addressLine2,addressLine3,assignmentUUID,benchStrength,benchStrengthNav,bonusBudgetAmount,bonusTarget
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"userId\": \"Edm.Byte\"};\n\
+        if (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_UserPermissions', Object.entries(types).map(([k,t]) =>\
+        \ k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/UserPermissions'
+    method: GET
+    meta:
+      id: req_ff092dd47e1a6c89e8068637d7d7e115
+      description: 'Chaves: userId (Edm.Byte). Execute Listar para preencher automaticamente key_UserPermissions.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: userId,addressLine1,addressLine2,addressLine3,assignmentUUID,benchStrength,benchStrengthNav,bonusBudgetAmount,bonusTarget
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/UserPermissions({{ _.key_UserPermissions }})'
+    method: GET
+    meta:
+      id: req_6d97d61f8b487a0022869b2bd58b3361
+      description: 'Chaves: userId (Edm.Byte). Execute Listar para preencher automaticamente key_UserPermissions.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/UserPermissions/$count'
+    method: GET
+    meta:
+      id: req_cdcceaff6bd18261abebe57ff02c2685
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+environments:
+  name: Base Environment
+  meta:
+    id: env_7184f3b52881f04b83dfaf21dd9ea46e
+  data:
+    next_page_url: ''
+    key_ExternalUser: userId='REPLACE_ME'
+    key_Photo: photoType=0,userId='REPLACE_ME'
+    key_User: userId='REPLACE_ME'
+    key_UserAccount: username='REPLACE_ME'
+    key_UserPermissions: userId=0

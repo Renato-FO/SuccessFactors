@@ -1,0 +1,1095 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Pessoas-e-Dados-Pessoais | Escrita 02
+meta:
+  id: wrk_0cdb2cee12dc7c1fb36014f55dbea973
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_9ba86768b799709fbbd9f6677fa01785
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_3f577b3d90ec7d95b679cf921d047fd0
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_3862135b2d8a37eb5140d6b6b04c8191
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_f25fe3aec5ce482e85ff455f3f808cc3
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_0a307aab64afae27e6497c9a5cee3a9d
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: PerGlobalInfoJPN
+  meta:
+    id: fld_ccd8fdd726a6a77a5eae3b3514bb73c6
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_5abd1f1201a7ba1fbbbaa72842cf964f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoJPN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoJPN\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoKOR
+  meta:
+    id: fld_2a691d1faac1f5ba0e68b996ef4da720
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_20bcb2679e240a24f1f9fff958cc63c6
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoKOR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoKOR\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoLKA
+  meta:
+    id: fld_d2b58202097f0a6502e81a578e892aaa
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_891292c888a17515bfd8ab5e1525034b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoLKA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoLKA\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoMEX
+  meta:
+    id: fld_8b8b62b94e298be9ce97ed97c6eac814
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_0d9e8e91d2c7fd5dd36b032b6c8d7898
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoMEX. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoMEX\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoMYS
+  meta:
+    id: fld_d56f24631fbcbed47bda2b84298e6a5d
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_a94b9efed2abe1700c066ec4a52c6a83
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoMYS. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoMYS\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoNLD
+  meta:
+    id: fld_e07e3d36fa8b9a3f12b777a138d327b2
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_9927989c74413977f9148b9d40c26bc3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoNLD. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoNLD\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\",\n    \"genericString4\"\
+        : \"REPLACE_ME\"\n  }\n]"
+- name: PerGlobalInfoNOR
+  meta:
+    id: fld_628f801950ea6dd0962c4aded89d02fd
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_71554326c953efa4819fb956e77427b5
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoNOR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoNOR\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoNZL
+  meta:
+    id: fld_f9648ab7bea70984b385260f2360e80e
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_8aba75a98ca6eaa35dd8b7c5de1944c4
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoNZL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoNZL\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoOMN
+  meta:
+    id: fld_ad6295f4b941f3d1f0ee861c910eddfb
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_a75d5962e91a1b09b1ea2e5bb686b2de
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoOMN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoOMN\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoPER
+  meta:
+    id: fld_3887dcd643cd214c6b3d569f1e5ad37a
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_5cb32665377d04d42899f88a101fa21d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoPER. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoPER\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\",\n    \"genericString4\"\
+        : \"REPLACE_ME\"\n  }\n]"
+- name: PerGlobalInfoPHL
+  meta:
+    id: fld_f31492cf1ac01bee4fe465bd04af3298
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_c581162a1390eaf9a49442d62c10b302
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoPHL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoPHL\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoPOL
+  meta:
+    id: fld_c8940b7ad736f3b4fdab4a8c31e3a4bb
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_04811760480e10395905758bda27384c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoPOL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoPOL\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoPRT
+  meta:
+    id: fld_afecd811b455ddf8c485d788875c13d7
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_eacbeb3cb29d670f1b39d38fe16a7699
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoPRT. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoPRT\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\",\n    \"genericString4\"\
+        : \"REPLACE_ME\"\n  }\n]"
+- name: PerGlobalInfoQAT
+  meta:
+    id: fld_51dee69b3580eb30e15435d7746d91bd
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_5ab7e4a813fc8eca0143c903f679431b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoQAT. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoQAT\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoROU
+  meta:
+    id: fld_76fa769807f395bb3dae63b1d82c143a
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_d8528eb3331603fad6130c54e575ba8a
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoROU. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoROU\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoRUS
+  meta:
+    id: fld_7e186008887c00bcd20466c5e9b46648
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_e09f30feaa709715112c6b766d9bfcc7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoRUS. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoRUS\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoSAU
+  meta:
+    id: fld_a3a2da37b07e7669ace8e1ab0cb68511
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_88391b2f9a238dfc0c7775fa88c5d9f9
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoSAU. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoSAU\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoSGP
+  meta:
+    id: fld_4b4ec685f8e78d56a80be212059af4b7
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_73189760ca42b3942bb5e8abcb8311a9
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoSGP. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoSGP\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoSWE
+  meta:
+    id: fld_6d53de8bbc9456b3737e75a2932fcd09
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_0602342a79cfdb922aeaaad81a5c5233
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoSWE. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoSWE\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoTHA
+  meta:
+    id: fld_b6d650fbac58a8be428935b2b92ee6ab
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_701fbd995ae5ff11872d71080afbc97f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoTHA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoTHA\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoTUR
+  meta:
+    id: fld_ab478cdf4033133c03eb895e9054e82e
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_aeadddbc0f957af33b450ad56569c23c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoTUR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoTUR\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoTWN
+  meta:
+    id: fld_0fcf166643a83514523ad18efe02ccc3
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_bf693870d36907807cea287fc4f8c8bc
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoTWN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoTWN\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoUSA
+  meta:
+    id: fld_fefb84a27b32219e045b1045c1aecb1f
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_e22cda736cc0d0d735d4d2f8816138c1
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoUSA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoUSA\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\",\n    \"genericString4\"\
+        : \"REPLACE_ME\"\n  }\n]"
+- name: PerGlobalInfoVEN
+  meta:
+    id: fld_96abdf8ad0e52fae825cdda1ac602129
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_b94d67194c7f35df943c43231d2761b9
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoVEN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoVEN\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoVNM
+  meta:
+    id: fld_98d049589c9a6fa08ac8eb8f4dfc95d9
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_572cabac69e5fc935deb02786e322681
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoVNM. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoVNM\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerGlobalInfoZAF
+  meta:
+    id: fld_2aeb12ea72caa04f1e282a1afcf4799c
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_ed39c0e6e1590697802b3842d48f2a16
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: country (Edm.String), personIdExternal (Edm.String), startDate (Edm.DateTime). Execute
+        Listar para preencher automaticamente key_PerGlobalInfoZAF. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerGlobalInfoZAF\"\n    },\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+- name: PerNationalId
+  meta:
+    id: fld_00acd76fae3767ef40298f0e991a5242
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_eb1d1b93f0ebb4bc3389f615d8b52d3c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: cardType (Edm.String), country (Edm.String), personIdExternal (Edm.String). Execute Listar
+        para preencher automaticamente key_PerNationalId. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerNationalId\"\n    },\n    \"cardType\": \"REPLACE_ME\"\
+        ,\n    \"country\": \"REPLACE_ME\",\n    \"personIdExternal\": \"REPLACE_ME\",\n    \"isPrimary\": false,\n\
+        \    \"nationalId\": \"REPLACE_ME\"\n  }\n]"
+- name: PerPerson
+  meta:
+    id: fld_a6c77b6e1ab3d4e5ad08609f556fa222
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_270412efc4f49cb7dfc0d8b175d33c8c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: personIdExternal (Edm.String). Execute Listar para preencher automaticamente key_PerPerson.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerPerson\"\n    },\n    \"personIdExternal\": \"REPLACE_ME\"\
+        \n  }\n]"
+- name: PerPersonRelationship
+  meta:
+    id: fld_12ac97e6bb20360ec3e95f7d1008adf9
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_68e2bebe1db400e18b24ce85e9610427
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: personIdExternal (Edm.String), relatedPersonIdExternal (Edm.String), startDate (Edm.DateTime).
+        Execute Listar para preencher automaticamente key_PerPersonRelationship. Campos e permissoes podem variar
+        por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerPersonRelationship\"\n    },\n    \"personIdExternal\"\
+        : \"REPLACE_ME\",\n    \"relatedPersonIdExternal\": \"REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\
+        ,\n    \"relationshipType\": \"REPLACE_ME\"\n  }\n]"
+- name: PerPersonal
+  meta:
+    id: fld_b7f620fcae12bfe3ff033bd00938ed2a
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_a58df0a25baed48add4d5c38713222d8
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: personIdExternal (Edm.String), startDate (Edm.DateTime). Execute Listar para preencher
+        automaticamente key_PerPersonal. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerPersonal\"\n    },\n    \"personIdExternal\": \"\
+        REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\",\n    \"firstName\": \"REPLACE_ME\",\n    \"\
+        lastName\": \"REPLACE_ME\",\n    \"nationality\": \"REPLACE_ME\",\n    \"nativePreferredLang\": \"REPLACE_ME\"\
+        \n  }\n]"
+- name: PerPhone
+  meta:
+    id: fld_9014f912034c4434f307e7943ba2dbb9
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_c4df76895d83139cb72b2e07b3aaa7a1
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: personIdExternal (Edm.String), phoneType (Edm.String). Execute Listar para preencher
+        automaticamente key_PerPhone. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"PerPhone\"\n    },\n    \"personIdExternal\": \"REPLACE_ME\"\
+        ,\n    \"phoneType\": \"REPLACE_ME\",\n    \"isPrimary\": false,\n    \"phoneNumber\": \"REPLACE_ME\"\n\
+        \  }\n]"
+environments:
+  name: Base Environment
+  meta:
+    id: env_0cdb2cee12dc7c1fb36014f55dbea973
+  data:
+    next_page_url: ''
+    key_PerGlobalInfoJPN: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoKOR: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoLKA: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoMEX: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoMYS: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoNLD: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoNOR: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoNZL: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoOMN: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoPER: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoPHL: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoPOL: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoPRT: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoQAT: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoROU: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoRUS: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoSAU: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoSGP: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoSWE: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoTHA: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoTUR: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoTWN: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoUSA: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoVEN: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoVNM: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerGlobalInfoZAF: country='REPLACE_ME',personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerNationalId: cardType='REPLACE_ME',country='REPLACE_ME',personIdExternal='REPLACE_ME'
+    key_PerPerson: personIdExternal='REPLACE_ME'
+    key_PerPersonRelationship: personIdExternal='REPLACE_ME',relatedPersonIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerPersonal: personIdExternal='REPLACE_ME',startDate=datetime'2000-01-01T00:00:00'
+    key_PerPhone: personIdExternal='REPLACE_ME',phoneType='REPLACE_ME'

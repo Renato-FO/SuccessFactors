@@ -1,0 +1,554 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Desempenho-e-Metas | Escrita 01
+meta:
+  id: wrk_950188ad240ce6070fd0bd6f203a2cb0
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_40d5d060cd9cf0325f6d82b897dfe39f
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_82c4dccb6e31b8f142206eb6e2a5656a
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_0bba3f13f2ae48c8fb602326991d0d37
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_9a5451ad87409889b24a5d0147871812
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_9d39823fae05a0c92996a5e38603a114
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: Form360ParticipantSection
+  meta:
+    id: fld_14476136160362f5fab72d08ed34f941
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_62ae6f7727e9c0c4a174a51a84c6d4ca
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_Form360ParticipantSection. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"Form360ParticipantSection\"\n    },\n    \"formContentId\"\
+        : \"0\",\n    \"formDataId\": \"0\"\n  }\n]"
+- name: FormBehaviorRatingComment
+  meta:
+    id: fld_b707d0be7dbdf79bc31c3ca28d7c9d59
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_7bde3593c4a3f72c73f371767cb730ac
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: behaviorId (Edm.Int64), formContentId (Edm.Int64), formDataId (Edm.Int64), itemId (Edm.Int64),
+        ratingType (Edm.String), sectionIndex (Edm.Int32), userId (Edm.String). Execute Listar para preencher automaticamente
+        key_FormBehaviorRatingComment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FormBehaviorRatingComment\"\n    },\n    \"behaviorId\"\
+        : \"0\",\n    \"formContentId\": \"0\",\n    \"formDataId\": \"0\",\n    \"itemId\": \"0\",\n    \"ratingType\"\
+        : \"REPLACE_ME\",\n    \"sectionIndex\": 0,\n    \"userId\": \"REPLACE_ME\"\n  }\n]"
+- name: FormCompetency
+  meta:
+    id: fld_37b64317b2b8266ef9395260e25690d7
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/FormCompetency'
+    method: POST
+    meta:
+      id: req_ac6cc136594f8e29fa11ae2d56d69406
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64), itemId (Edm.Int64), sectionIndex (Edm.Int32).
+        Execute Listar para preencher automaticamente key_FormCompetency. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id004
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: '{}'
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/FormCompetency({{ _.key_FormCompetency }})'
+    method: MERGE
+    meta:
+      id: req_fd4fcb00e4b0ee712120d44e12ad3abe
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64), itemId (Edm.Int64), sectionIndex (Edm.Int32).
+        Execute Listar para preencher automaticamente key_FormCompetency. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "{\n  \"formContentId\": \"0\",\n  \"formDataId\": \"0\",\n  \"itemId\": \"0\",\n  \"sectionIndex\"\
+        : 0\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_7fc5a5c18b49ab8cdc9887df5683b82d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64), itemId (Edm.Int64), sectionIndex (Edm.Int32).
+        Execute Listar para preencher automaticamente key_FormCompetency. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FormCompetency\"\n    },\n    \"formContentId\": \"\
+        0\",\n    \"formDataId\": \"0\",\n    \"itemId\": \"0\",\n    \"sectionIndex\": 0\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/FormCompetency({{ _.key_FormCompetency }})'
+    method: DELETE
+    meta:
+      id: req_862d097d20ab639455328c4c0570eeda
+      description: 'Exclui o registro identificado pela chave. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64),
+        itemId (Edm.Int64), sectionIndex (Edm.Int32). Execute Listar para preencher automaticamente key_FormCompetency.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: FormCompetencyBehavior
+  meta:
+    id: fld_1cffc6449f86c071c737338a31a2f1d5
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/FormCompetencyBehavior'
+    method: POST
+    meta:
+      id: req_3e0dfba1cd16c8fe5416982121c02e60
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: behaviorId (Edm.Int64), formContentId (Edm.Int64), formDataId (Edm.Int64), itemId (Edm.Int64),
+        sectionIndex (Edm.Int32). Execute Listar para preencher automaticamente key_FormCompetencyBehavior. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id005
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: '{}'
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/FormCompetencyBehavior({{ _.key_FormCompetencyBehavior }})'
+    method: MERGE
+    meta:
+      id: req_0dc08b12ef9ecbf9e07db3b567998fba
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: behaviorId (Edm.Int64), formContentId (Edm.Int64), formDataId (Edm.Int64), itemId (Edm.Int64),
+        sectionIndex (Edm.Int32). Execute Listar para preencher automaticamente key_FormCompetencyBehavior. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "{\n  \"behaviorId\": \"0\",\n  \"formContentId\": \"0\",\n  \"formDataId\": \"0\",\n  \"itemId\": \"\
+        0\",\n  \"sectionIndex\": 0\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_8a3d3e22342e5a3e0031b79eeb98d80b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: behaviorId (Edm.Int64), formContentId (Edm.Int64), formDataId (Edm.Int64), itemId (Edm.Int64),
+        sectionIndex (Edm.Int32). Execute Listar para preencher automaticamente key_FormCompetencyBehavior. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FormCompetencyBehavior\"\n    },\n    \"behaviorId\"\
+        : \"0\",\n    \"formContentId\": \"0\",\n    \"formDataId\": \"0\",\n    \"itemId\": \"0\",\n    \"sectionIndex\"\
+        : 0\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/FormCompetencyBehavior({{ _.key_FormCompetencyBehavior }})'
+    method: DELETE
+    meta:
+      id: req_d47af72421590ef3240fe32877da21d8
+      description: 'Exclui o registro identificado pela chave. Chaves: behaviorId (Edm.Int64), formContentId (Edm.Int64),
+        formDataId (Edm.Int64), itemId (Edm.Int64), sectionIndex (Edm.Int32). Execute Listar para preencher automaticamente
+        key_FormCompetencyBehavior. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: FormCompetencySection
+  meta:
+    id: fld_804d09e52370d14faa266ff86a414023
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/FormCompetencySection'
+    method: POST
+    meta:
+      id: req_e33f250ac8c9a3af53d82a1cace4ec6d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64), sectionIndex (Edm.Int32). Execute
+        Listar para preencher automaticamente key_FormCompetencySection. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id006
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: '{}'
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/FormCompetencySection({{ _.key_FormCompetencySection }})'
+    method: MERGE
+    meta:
+      id: req_f87df339e55b0bccb0d1a03cbbb52e4c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64), sectionIndex (Edm.Int32). Execute
+        Listar para preencher automaticamente key_FormCompetencySection. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "{\n  \"formContentId\": \"0\",\n  \"formDataId\": \"0\",\n  \"sectionIndex\": 0\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_72dbf0ae0d0931c374896e67f0232114
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64), sectionIndex (Edm.Int32). Execute
+        Listar para preencher automaticamente key_FormCompetencySection. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FormCompetencySection\"\n    },\n    \"formContentId\"\
+        : \"0\",\n    \"formDataId\": \"0\",\n    \"sectionIndex\": 0\n  }\n]"
+- name: FormObjective
+  meta:
+    id: fld_fcd5793de27943d6651aeeaed321ab13
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_dc5788b32cf61538f86506c8745a6300
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64), itemId (Edm.Int64), sectionIndex (Edm.Int32).
+        Execute Listar para preencher automaticamente key_FormObjective. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FormObjective\"\n    },\n    \"formContentId\": \"\
+        0\",\n    \"formDataId\": \"0\",\n    \"itemId\": \"0\",\n    \"sectionIndex\": 0\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/FormObjective({{ _.key_FormObjective }})'
+    method: DELETE
+    meta:
+      id: req_d8041cf6894eeda2ef0fa72c56d6201f
+      description: 'Exclui o registro identificado pela chave. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64),
+        itemId (Edm.Int64), sectionIndex (Edm.Int32). Execute Listar para preencher automaticamente key_FormObjective.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: FormObjectiveSection
+  meta:
+    id: fld_b6369ea917a4ac3c2a2d40632810e872
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_c54d5730ac89e30f6b5e99a8203a49cd
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64), sectionIndex (Edm.Int32). Execute
+        Listar para preencher automaticamente key_FormObjectiveSection. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FormObjectiveSection\"\n    },\n    \"formContentId\"\
+        : \"0\",\n    \"formDataId\": \"0\",\n    \"sectionIndex\": 0\n  }\n]"
+- name: FormPMReviewContentDetail
+  meta:
+    id: fld_90a2e41cac4193246bf1b47499cdb729
+    description: ''
+  children:
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_c3db6316fe76d359119d64835dd25e84
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: formContentId (Edm.Int64), formDataId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_FormPMReviewContentDetail. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FormPMReviewContentDetail\"\n    },\n    \"formContentId\"\
+        : \"0\",\n    \"formDataId\": \"0\"\n  }\n]"
+environments:
+  name: Base Environment
+  meta:
+    id: env_950188ad240ce6070fd0bd6f203a2cb0
+  data:
+    next_page_url: ''
+    key_Form360ParticipantSection: formContentId=0L,formDataId=0L
+    key_FormBehaviorRatingComment: behaviorId=0L,formContentId=0L,formDataId=0L,itemId=0L,ratingType='REPLACE_ME',sectionIndex=0,userId='REPLACE_ME'
+    key_FormCompetency: formContentId=0L,formDataId=0L,itemId=0L,sectionIndex=0
+    key_FormCompetencyBehavior: behaviorId=0L,formContentId=0L,formDataId=0L,itemId=0L,sectionIndex=0
+    key_FormCompetencySection: formContentId=0L,formDataId=0L,sectionIndex=0
+    key_FormObjective: formContentId=0L,formDataId=0L,itemId=0L,sectionIndex=0
+    key_FormObjectiveSection: formContentId=0L,formDataId=0L,sectionIndex=0
+    key_FormPMReviewContentDetail: formContentId=0L,formDataId=0L

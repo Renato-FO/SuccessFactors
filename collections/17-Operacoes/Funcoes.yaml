@@ -1,0 +1,1810 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Operacoes OData
+meta:
+  id: wrk_55e0395a7d60ea765aced90e6121add6
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_1de6d0d53c5311409795ea1c0bdd50ee
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_62db57dc56bd9715aa7f43cb861c7976
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_b309d4c904badbc2ab94d8d2a5509714
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_be5c7d07ab878bea199b795bde35bfeb
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_84c2f3165da6cd283419b3b995e4cdd5
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: refreshMetadata
+  url: '{{ _.base_url }}/odata/v2/refreshMetadata'
+  method: GET
+  meta:
+    id: req_97b59a601db9eb8ea1bc2809fa2552f7
+    description: 'Operacao OData: refreshMetadata. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+- name: getPeopleProfileHeader
+  url: '{{ _.base_url }}/odata/v2/getPeopleProfileHeader'
+  method: GET
+  meta:
+    id: req_bfab2288282d9dfed62c332788d4f74f
+    description: 'Operacao OData: getPeopleProfileHeader. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: userId
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getDefaultGoalPlanTemplateId
+  url: '{{ _.base_url }}/odata/v2/getDefaultGoalPlanTemplateId'
+  method: GET
+  meta:
+    id: req_6be6bd5e70f3c0e607e02ab3b852de98
+    description: 'Operacao OData: getDefaultGoalPlanTemplateId. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+- name: getMatchedGuideLineRuleInfo
+  url: '{{ _.base_url }}/odata/v2/getMatchedGuideLineRuleInfo'
+  method: GET
+  meta:
+    id: req_d24db8b5699df51e37d071c07b4c9130
+    description: 'Operacao OData: getMatchedGuideLineRuleInfo. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: programId
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: userIds
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: category
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: level
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: isUserEligibleForSpotAwardProgram
+  url: '{{ _.base_url }}/odata/v2/isUserEligibleForSpotAwardProgram'
+  method: GET
+  meta:
+    id: req_fd2a614de8e4582e9e28e09cd4710c45
+    description: 'Operacao OData: isUserEligibleForSpotAwardProgram. Revise parametros e efeito antes de executar.
+      Parametros tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: programId
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: userId
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getEligibleSpotAwardsProgramCodes
+  url: '{{ _.base_url }}/odata/v2/getEligibleSpotAwardsProgramCodes'
+  method: GET
+  meta:
+    id: req_c0e1f9c50be6b0ea3a23b310a7d9b02d
+    description: 'Operacao OData: getEligibleSpotAwardsProgramCodes. Revise parametros e efeito antes de executar.
+      Parametros tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: userId
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: initiateOnboardingForUser
+  url: '{{ _.base_url }}/odata/v2/initiateOnboardingForUser'
+  method: POST
+  meta:
+    id: req_6b53daeea93642c6f06009263737ea5e
+    description: 'Operacao OData: initiateOnboardingForUser. Revise parametros e efeito antes de executar. Parametros
+      JSON no corpo.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  - name: Content-Type
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  body:
+    mimeType: application/json
+    text: '{}'
+- name: createOnboardee
+  url: '{{ _.base_url }}/odata/v2/createOnboardee'
+  method: POST
+  meta:
+    id: req_f03ab867a287d51f002bc8e48b2252d5
+    description: 'Operacao OData: createOnboardee. Revise parametros e efeito antes de executar. Parametros JSON
+      no corpo.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  - name: Content-Type
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  body:
+    mimeType: application/json
+    text: '{}'
+- name: updateFromExternalHrisONB
+  url: '{{ _.base_url }}/odata/v2/updateFromExternalHrisONB'
+  method: POST
+  meta:
+    id: req_a855291d4342ef7e8dab1ecbd0a7ec07
+    description: 'Operacao OData: updateFromExternalHrisONB. Revise parametros e efeito antes de executar. Parametros
+      JSON no corpo.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  - name: Content-Type
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  body:
+    mimeType: application/json
+    text: '{}'
+- name: getUserNameFormat
+  url: '{{ _.base_url }}/odata/v2/getUserNameFormat'
+  method: GET
+  meta:
+    id: req_be945d25796cfebc835e0840639e2c0d
+    description: 'Operacao OData: getUserNameFormat. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: locale
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getPasswordPolicy
+  url: '{{ _.base_url }}/odata/v2/getPasswordPolicy'
+  method: GET
+  meta:
+    id: req_84afa2d12beb214bed5f37f57ca187c7
+    description: 'Operacao OData: getPasswordPolicy. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: locale
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: fwdCandidateToColleague
+  url: '{{ _.base_url }}/odata/v2/fwdCandidateToColleague'
+  method: GET
+  meta:
+    id: req_71c0e1b9d4018cf7ff91bc8f225ec75b
+    description: 'Operacao OData: fwdCandidateToColleague. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: candidateId
+    value: 0L
+    disabled: false
+  - name: referredTo
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: setSmsNotificationPreference
+  url: '{{ _.base_url }}/odata/v2/setSmsNotificationPreference'
+  method: POST
+  meta:
+    id: req_6da301d44335b6d96f16d3d73150f1e4
+    description: 'Operacao OData: setSmsNotificationPreference. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: optIn
+    value: 'false'
+    disabled: false
+  - name: candidateId
+    value: 0L
+    disabled: false
+  - name: isoCountryCode
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: cellPhone
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: reassignJobReq
+  url: '{{ _.base_url }}/odata/v2/reassignJobReq'
+  method: GET
+  meta:
+    id: req_11102665b3831324eb3627ae177a8568
+    description: 'Operacao OData: reassignJobReq. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: jobReqId
+    value: '0'
+    disabled: false
+  - name: hiringManager
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: recruiter
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: coordinator
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: vpOfStaffing
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: secondRecruiter
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: sourcer
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: initiateOnboarding
+  url: '{{ _.base_url }}/odata/v2/initiateOnboarding'
+  method: GET
+  meta:
+    id: req_b5e113c9e01d5501a2900a2922c5cb2e
+    description: 'Operacao OData: initiateOnboarding. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: applicationId
+    value: 0L
+    disabled: false
+- name: sendJobReqToPreviousStep
+  url: '{{ _.base_url }}/odata/v2/sendJobReqToPreviousStep'
+  method: GET
+  meta:
+    id: req_9a8408d51eecaa8ed9580f3fd6efd47d
+    description: 'Operacao OData: sendJobReqToPreviousStep. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: jobReqId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: sendJobReqToNextStep
+  url: '{{ _.base_url }}/odata/v2/sendJobReqToNextStep'
+  method: POST
+  meta:
+    id: req_28d1bce9f06106a80d337549035ae636
+    description: 'Operacao OData: sendJobReqToNextStep. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: jobReqId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: sendJobReqFormToUser
+  url: '{{ _.base_url }}/odata/v2/sendJobReqFormToUser'
+  method: POST
+  meta:
+    id: req_f8a9b9149f23bfcefb9ac8722f8dc869
+    description: 'Operacao OData: sendJobReqFormToUser. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: jobReqId
+    value: 0L
+    disabled: false
+  - name: userId
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: approveOrDeclineJobReqForm
+  url: '{{ _.base_url }}/odata/v2/approveOrDeclineJobReqForm'
+  method: POST
+  meta:
+    id: req_462677528c0f0b70d37ea1a000e46ce1
+    description: 'Operacao OData: approveOrDeclineJobReqForm. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: jobReqId
+    value: 0L
+    disabled: false
+  - name: actionType
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: addModifierToJobReq
+  url: '{{ _.base_url }}/odata/v2/addModifierToJobReq'
+  method: GET
+  meta:
+    id: req_bee5a8145730f205863746cd7712ad37
+    description: 'Operacao OData: addModifierToJobReq. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: jobReqId
+    value: 0L
+    disabled: false
+  - name: modifier
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: approveOffer
+  url: '{{ _.base_url }}/odata/v2/approveOffer'
+  method: GET
+  meta:
+    id: req_3517987d50dc3df32cfdabd73e8a04ab
+    description: 'Operacao OData: approveOffer. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: applicationId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: declineOffer
+  url: '{{ _.base_url }}/odata/v2/declineOffer'
+  method: GET
+  meta:
+    id: req_3ee813d0e3f05f40f51ee964e44e2c43
+    description: 'Operacao OData: declineOffer. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: applicationId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: sendOfferForApproval
+  url: '{{ _.base_url }}/odata/v2/sendOfferForApproval'
+  method: GET
+  meta:
+    id: req_10b9433c4bcc1c87ca766bce0daeebf1
+    description: 'Operacao OData: sendOfferForApproval. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: applicationId
+    value: 0L
+    disabled: false
+- name: sendMailOfferLetter
+  url: '{{ _.base_url }}/odata/v2/sendMailOfferLetter'
+  method: GET
+  meta:
+    id: req_4ded5e747c980913b31b3510ad6c3a63
+    description: 'Operacao OData: sendMailOfferLetter. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: offerLetterId
+    value: 0L
+    disabled: false
+  - name: sendMode
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: bodyTemplateId
+    value: 0L
+    disabled: false
+  - name: bodyLocale
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getRecruitingTemplate
+  url: '{{ _.base_url }}/odata/v2/getRecruitingTemplate'
+  method: GET
+  meta:
+    id: req_0eee621a89cccfe183383488dbc7e767
+    description: 'Operacao OData: getRecruitingTemplate. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: templateName
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: templateType
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getOfferLetterTemplate
+  url: '{{ _.base_url }}/odata/v2/getOfferLetterTemplate'
+  method: GET
+  meta:
+    id: req_5e9ce60454d3418e7ec8ff640b11291f
+    description: 'Operacao OData: getOfferLetterTemplate. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: templateName
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: templateType
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: refreshInterviewAssessments
+  url: '{{ _.base_url }}/odata/v2/refreshInterviewAssessments'
+  method: POST
+  meta:
+    id: req_a4c5c3e0eaa4dfcf976d22de7f306c39
+    description: 'Operacao OData: refreshInterviewAssessments. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: jobReqIdParam
+    value: 0L
+    disabled: false
+- name: sendEmailToInterviewers
+  url: '{{ _.base_url }}/odata/v2/sendEmailToInterviewers'
+  method: POST
+  meta:
+    id: req_b19692b52e0172ef24539c0f809150db
+    description: 'Operacao OData: sendEmailToInterviewers. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: applicationId
+    value: 0L
+    disabled: false
+  - name: interviewers
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: attachResume
+    value: 'false'
+    disabled: false
+  - name: attachCoverLetter
+    value: 'false'
+    disabled: false
+  - name: attachInterviewGuide
+    value: 'false'
+    disabled: false
+  - name: hiringManagerNote
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: inviteToApply
+  url: '{{ _.base_url }}/odata/v2/inviteToApply'
+  method: POST
+  meta:
+    id: req_6d07b737978dbe4142cffd7358629554
+    description: 'Operacao OData: inviteToApply. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: jobReqId
+    value: 0L
+    disabled: false
+  - name: candidateIds
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: checkUserPermission
+  url: '{{ _.base_url }}/odata/v2/checkUserPermission'
+  method: GET
+  meta:
+    id: req_11493d80917021b4f427c4b975b1981f
+    description: 'Operacao OData: checkUserPermission. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: accessUserId
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: permType
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: permStringValue
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: permLongValue
+    value: 0L
+    disabled: false
+  - name: targetUserId
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: includeInactiveUser
+    value: 'false'
+    disabled: false
+  - name: includeTBHUser
+    value: 'false'
+    disabled: false
+- name: updateStaticGroup
+  url: '{{ _.base_url }}/odata/v2/updateStaticGroup'
+  method: GET
+  meta:
+    id: req_3d2ec42a6fc60b16201ebae79c679aea
+    description: 'Operacao OData: updateStaticGroup. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: groupId
+    value: 0L
+    disabled: false
+  - name: action
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: userIds
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getDynamicGroupsByUser
+  url: '{{ _.base_url }}/odata/v2/getDynamicGroupsByUser'
+  method: GET
+  meta:
+    id: req_daf201794a20867cd35b4a6413df495a
+    description: 'Operacao OData: getDynamicGroupsByUser. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: userId
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: groupSubType
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getUsersByDynamicGroup
+  url: '{{ _.base_url }}/odata/v2/getUsersByDynamicGroup'
+  method: GET
+  meta:
+    id: req_05dde89b6ba4b77d2f250f8e34853655
+    description: 'Operacao OData: getUsersByDynamicGroup. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: groupId
+    value: 0L
+    disabled: false
+  - name: activeOnly
+    value: 'false'
+    disabled: false
+- name: getUserRolesReport
+  url: '{{ _.base_url }}/odata/v2/getUserRolesReport'
+  method: GET
+  meta:
+    id: req_e616ac75ef68d7cbc8e9774186a8304b
+    description: 'Operacao OData: getUserRolesReport. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: userIds
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getPermissionMetadata
+  url: '{{ _.base_url }}/odata/v2/getPermissionMetadata'
+  method: GET
+  meta:
+    id: req_7429d39ee883276c7464446ccec7739e
+    description: 'Operacao OData: getPermissionMetadata. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: locale
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getUsersPermissions
+  url: '{{ _.base_url }}/odata/v2/getUsersPermissions'
+  method: GET
+  meta:
+    id: req_0ef8fa21754daafa854b483902ba3d8e
+    description: 'Operacao OData: getUsersPermissions. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: userIds
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: locale
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getRolesPermissions
+  url: '{{ _.base_url }}/odata/v2/getRolesPermissions'
+  method: GET
+  meta:
+    id: req_d2cd6af64d1993f9334cee6bbf4a1244
+    description: 'Operacao OData: getRolesPermissions. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: roleIds
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: locale
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: checkUserPermissions
+  url: '{{ _.base_url }}/odata/v2/checkUserPermissions'
+  method: POST
+  meta:
+    id: req_78c82cd18db122da2ab59b2f7ddbfcc9
+    description: 'Operacao OData: checkUserPermissions. Revise parametros e efeito antes de executar. Parametros
+      JSON no corpo.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  - name: Content-Type
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  body:
+    mimeType: application/json
+    text: "{\n  \"includeLegacy\": false\n}"
+- name: getExpandedDynamicGroupById
+  url: '{{ _.base_url }}/odata/v2/getExpandedDynamicGroupById'
+  method: GET
+  meta:
+    id: req_dbe5e04aeccb6efe5b4a5672096477a4
+    description: 'Operacao OData: getExpandedDynamicGroupById. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: groupId
+    value: 0L
+    disabled: false
+- name: getExpandedDynamicGroupByName
+  url: '{{ _.base_url }}/odata/v2/getExpandedDynamicGroupByName'
+  method: GET
+  meta:
+    id: req_6fab48a35ecb0d326f5b3a0ca9726a3e
+    description: 'Operacao OData: getExpandedDynamicGroupByName. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: groupName
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getExpandedDynamicGroupByNameAndSubType
+  url: '{{ _.base_url }}/odata/v2/getExpandedDynamicGroupByNameAndSubType'
+  method: GET
+  meta:
+    id: req_c3873eb5ab019a9c19ab0159a09a59ed
+    description: 'Operacao OData: getExpandedDynamicGroupByNameAndSubType. Revise parametros e efeito antes de executar.
+      Parametros tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: groupName
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: groupType
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getUserRolesByUserId
+  url: '{{ _.base_url }}/odata/v2/getUserRolesByUserId'
+  method: GET
+  meta:
+    id: req_50bd562a8ea942066e84f11b5f929c1b
+    description: 'Operacao OData: getUserRolesByUserId. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: userId
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: signForm
+  url: '{{ _.base_url }}/odata/v2/signForm'
+  method: GET
+  meta:
+    id: req_32da8563d7c12d1e3cd890384a16e7fa
+    description: 'Operacao OData: signForm. Revise parametros e efeito antes de executar. Parametros tipados em
+      query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: formDataId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: rejectForm
+  url: '{{ _.base_url }}/odata/v2/rejectForm'
+  method: GET
+  meta:
+    id: req_280811f868867626a711fad97f83cf56
+    description: 'Operacao OData: rejectForm. Revise parametros e efeito antes de executar. Parametros tipados em
+      query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: formDataId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: sendToNextStep
+  url: '{{ _.base_url }}/odata/v2/sendToNextStep'
+  method: GET
+  meta:
+    id: req_330a770d0400eab027bb7f80c413cd9a
+    description: 'Operacao OData: sendToNextStep. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: formDataId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: innerStepUserId
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: nextIStepEntryUser
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: sendToPreviousStep
+  url: '{{ _.base_url }}/odata/v2/sendToPreviousStep'
+  method: GET
+  meta:
+    id: req_06bebfa9eceda05a6c5d652112c108f9
+    description: 'Operacao OData: sendToPreviousStep. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: formDataId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: previousIStepEntryUser
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: createPerformanceReviewForm
+  url: '{{ _.base_url }}/odata/v2/createPerformanceReviewForm'
+  method: GET
+  meta:
+    id: req_3e2da6ecf053e87acc3d11a4b75276c4
+    description: 'Operacao OData: createPerformanceReviewForm. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: formSubjectId
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: formTemplateId
+    value: 0L
+    disabled: false
+  - name: sendEmail
+    value: 'false'
+    disabled: false
+  - name: enRouteCopy
+    value: 'false'
+    disabled: false
+- name: complete360
+  url: '{{ _.base_url }}/odata/v2/complete360'
+  method: GET
+  meta:
+    id: req_671a972b9a6f45a0dd98245f9a60255b
+    description: 'Operacao OData: complete360. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: formDataId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getPositionObjectData
+  url: '{{ _.base_url }}/odata/v2/getPositionObjectData'
+  method: GET
+  meta:
+    id: req_11b51cbe91bc003fb70e25c829b94ca2
+    description: 'Operacao OData: getPositionObjectData. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: positionId
+    value: 0L
+    disabled: false
+  - name: userId
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getNewEmploymentEnabledForContingentWorkforce
+  url: '{{ _.base_url }}/odata/v2/getNewEmploymentEnabledForContingentWorkforce'
+  method: GET
+  meta:
+    id: req_2a3a956f065f953a6680a0d5447028ef
+    description: 'Operacao OData: getNewEmploymentEnabledForContingentWorkforce. Revise parametros e efeito antes
+      de executar. Parametros tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+- name: getDefaultDevGoalPlanTemplateId
+  url: '{{ _.base_url }}/odata/v2/getDefaultDevGoalPlanTemplateId'
+  method: GET
+  meta:
+    id: req_beca15f0c52af2029ce60e00202565e1
+    description: 'Operacao OData: getDefaultDevGoalPlanTemplateId. Revise parametros e efeito antes de executar.
+      Parametros tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+- name: getExtEventMetaDataDefinition
+  url: '{{ _.base_url }}/odata/v2/getExtEventMetaDataDefinition'
+  method: GET
+  meta:
+    id: req_4956b80bca24add5669d0fed421d3d7d
+    description: 'Operacao OData: getExtEventMetaDataDefinition. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: event
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: topic
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: upsert
+  url: '{{ _.base_url }}/odata/v2/upsert'
+  method: POST
+  meta:
+    id: req_71081adbf07bfba2e45955cfc7768f36
+    description: 'Operacao OData: upsert. Revise parametros e efeito antes de executar. Parametros JSON no corpo.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  - name: Content-Type
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  body:
+    mimeType: application/json
+    text: '{}'
+- name: logout
+  url: '{{ _.base_url }}/odata/v2/logout'
+  method: GET
+  meta:
+    id: req_6bbd05ee011a1bc430d5eb89b4728108
+    description: 'Operacao OData: logout. Revise parametros e efeito antes de executar. Parametros tipados em query
+      string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+- name: isValidSession
+  url: '{{ _.base_url }}/odata/v2/isValidSession'
+  method: GET
+  meta:
+    id: req_42f2102ffff1fa8e7fe4fffd48e19991
+    description: 'Operacao OData: isValidSession. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+- name: convertAssignmentIdExternal
+  url: '{{ _.base_url }}/odata/v2/convertAssignmentIdExternal'
+  method: GET
+  meta:
+    id: req_85f82388f0d3c6db7a3f2b5b0ae22f67
+    description: 'Operacao OData: convertAssignmentIdExternal. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: oldAssignmentIdExternal
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: newAssignmentIdExternal
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getDocumentCategories
+  url: '{{ _.base_url }}/odata/v2/getDocumentCategories'
+  method: GET
+  meta:
+    id: req_07168b60c572f4e1ae955c94737651f2
+    description: 'Operacao OData: getDocumentCategories. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: entityType
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: excludeInactive
+    value: 'false'
+    disabled: false
+  - name: enforcePerm
+    value: 'false'
+    disabled: false
+  - name: sortColumn
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: descending
+    value: 'false'
+    disabled: false
+- name: getOpenTextAttachmentId
+  url: '{{ _.base_url }}/odata/v2/getOpenTextAttachmentId'
+  method: GET
+  meta:
+    id: req_d70c4dd7ba94c26f69ed7c84d0fa676c
+    description: 'Operacao OData: getOpenTextAttachmentId. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: document_id
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: syncCMISDocument
+  url: '{{ _.base_url }}/odata/v2/syncCMISDocument'
+  method: POST
+  meta:
+    id: req_4664137ed39268de4059bc0f988c39c8
+    description: 'Operacao OData: syncCMISDocument. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: document_id
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: action
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: approveSuccessors
+  url: '{{ _.base_url }}/odata/v2/approveSuccessors'
+  method: GET
+  meta:
+    id: req_221d0cf67365e3a9c6aa7fc57745d940
+    description: 'Operacao OData: approveSuccessors. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: nomineeIds
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: rejectSuccessors
+  url: '{{ _.base_url }}/odata/v2/rejectSuccessors'
+  method: GET
+  meta:
+    id: req_c26a252553f2dfdbdc72c5cd74dfa9f6
+    description: 'Operacao OData: rejectSuccessors. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: nomineeIds
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: GetBizXAction
+  url: '{{ _.base_url }}/odata/v2/GetBizXAction'
+  method: GET
+  meta:
+    id: req_a8d02dc4d80d66148d4c7654cff2d6e6
+    description: 'Operacao OData: GetBizXAction. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: actionSourceId
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: userId
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: generateNextPersonID
+  url: '{{ _.base_url }}/odata/v2/generateNextPersonID'
+  method: POST
+  meta:
+    id: req_61fd989002e5df442db99d97c93656fb
+    description: 'Operacao OData: generateNextPersonID. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+- name: approveWfRequest
+  url: '{{ _.base_url }}/odata/v2/approveWfRequest'
+  method: POST
+  meta:
+    id: req_505b7bc64d1395870a70847b64e99245
+    description: 'Operacao OData: approveWfRequest. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: wfRequestId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: commentWfRequest
+  url: '{{ _.base_url }}/odata/v2/commentWfRequest'
+  method: POST
+  meta:
+    id: req_3e975d2b633b7c0b27bc339004324bac
+    description: 'Operacao OData: commentWfRequest. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: wfRequestId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: rejectWfRequest
+  url: '{{ _.base_url }}/odata/v2/rejectWfRequest'
+  method: POST
+  meta:
+    id: req_61b1f68bcb49c196e4f0dd110ce922c4
+    description: 'Operacao OData: rejectWfRequest. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: wfRequestId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: sendbackWfRequest
+  url: '{{ _.base_url }}/odata/v2/sendbackWfRequest'
+  method: POST
+  meta:
+    id: req_f15a3e046b4ef772e6569988451b699f
+    description: 'Operacao OData: sendbackWfRequest. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: wfRequestId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: withdrawWfRequest
+  url: '{{ _.base_url }}/odata/v2/withdrawWfRequest'
+  method: POST
+  meta:
+    id: req_024871cd236f9d5727f64d09176e6234
+    description: 'Operacao OData: withdrawWfRequest. Revise parametros e efeito antes de executar. Parametros tipados
+      em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: wfRequestId
+    value: 0L
+    disabled: false
+  - name: comment
+    value: '''REPLACE_ME'''
+    disabled: false
+- name: getWorkflowPendingData
+  url: '{{ _.base_url }}/odata/v2/getWorkflowPendingData'
+  method: POST
+  meta:
+    id: req_717cc19911c0bf0b0df71fe9dc767a23
+    description: 'Operacao OData: getWorkflowPendingData. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: wfRequestId
+    value: 0L
+    disabled: false
+- name: changeWfRequestApprover
+  url: '{{ _.base_url }}/odata/v2/changeWfRequestApprover'
+  method: POST
+  meta:
+    id: req_a6edc10f02a5fd3a55d5842430676a97
+    description: 'Operacao OData: changeWfRequestApprover. Revise parametros e efeito antes de executar. Parametros
+      tipados em query string.'
+  authentication:
+    type: bearer
+    token: '{{ _.access_token }}'
+    prefix: Bearer
+  headers:
+  - name: Accept
+    value: application/json
+  parameters:
+  - name: $format
+    value: json
+    disabled: false
+  - name: wfRequestId
+    value: 0L
+    disabled: false
+  - name: wfRequestStepId
+    value: 0L
+    disabled: false
+  - name: updateToUserId
+    value: '''REPLACE_ME'''
+    disabled: false
+  - name: editTransaction
+    value: '''REPLACE_ME'''
+    disabled: false
+environments:
+  name: Base Environment
+  meta:
+    id: env_55e0395a7d60ea765aced90e6121add6
+  data:
+    next_page_url: ''

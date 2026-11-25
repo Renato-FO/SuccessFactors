@@ -1,0 +1,2748 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Onboarding | Leitura 01
+meta:
+  id: wrk_2c7d080d2c80d3a4f98d09f4d76e44f4
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_abdcd290e46da7acd34d5f6b1db05ee8
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_6c942f30ba4a2e0ff847c4110247dac3
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_4a4cdb64267bb16ff862907998257347
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_09239fd253c960125a0e7e6327666af8
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_9c7f8fac399840218f0183db285218ab
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: ComplianceDocumentFlow
+  meta:
+    id: fld_185a727383bb706532ddde5a2eb02cef
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow'
+    method: GET
+    meta:
+      id: req_b28cd806e4ab7a269569daef64dafd54
+      description: 'Chaves: documentFlowCode (Edm.String). Execute Listar para preencher automaticamente key_ComplianceDocumentFlow.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id004
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: documentFlowCode,createdBy,createdDateTime,declinedBy,declinedDocuments,declinedReason,docFlowBpeUserTaskId,documentFlowStatus
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"documentFlowCode\": \"Edm.String\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_ComplianceDocumentFlow', Object.entries(types).map(([k,t])\
+        \ => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow'
+    method: GET
+    meta:
+      id: req_679d2c1c810f11e1fcb16267b9800ad9
+      description: 'Chaves: documentFlowCode (Edm.String). Execute Listar para preencher automaticamente key_ComplianceDocumentFlow.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: documentFlowCode,createdBy,createdDateTime,declinedBy,declinedDocuments,declinedReason,docFlowBpeUserTaskId,documentFlowStatus
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow({{ _.key_ComplianceDocumentFlow }})'
+    method: GET
+    meta:
+      id: req_f1e5569f7bc9ef2b5cfbfdc252353f3b
+      description: 'Chaves: documentFlowCode (Edm.String). Execute Listar para preencher automaticamente key_ComplianceDocumentFlow.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow'
+    method: GET
+    meta:
+      id: req_6110b0a4fbd429a18563bcf74190fca7
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: documentFlowCode eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow/$count'
+    method: GET
+    meta:
+      id: req_15bb210f73078838c49cfff956758b33
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_55017afc616c49e7c1c0d6fcb66aaf6f
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow({{ _.key_ComplianceDocumentFlow }})/createdByNav'
+      method: GET
+      meta:
+        id: req_b393d47cbe8246d2016ee6b42c36f4d5
+        description: 'Destino: User. Chaves: documentFlowCode (Edm.String). Execute Listar para preencher automaticamente
+          key_ComplianceDocumentFlow. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow'
+      method: GET
+      meta:
+        id: req_4d60e4ff3e89f9f3a5eef0766cd1c1c4
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — declinedByNav
+      url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow({{ _.key_ComplianceDocumentFlow }})/declinedByNav'
+      method: GET
+      meta:
+        id: req_7f9fadba60b9f5425f6bf38b585f37c7
+        description: 'Destino: User. Chaves: documentFlowCode (Edm.String). Execute Listar para preencher automaticamente
+          key_ComplianceDocumentFlow. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+    - name: Expandir — declinedByNav
+      url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow'
+      method: GET
+      meta:
+        id: req_7a2b7b0b5c6226df77d8a684a71029fc
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: declinedByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow({{ _.key_ComplianceDocumentFlow }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_4b774e3e65f6378564e551ffdb0a7d13
+        description: 'Destino: User. Chaves: documentFlowCode (Edm.String). Execute Listar para preencher automaticamente
+          key_ComplianceDocumentFlow. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow'
+      method: GET
+      meta:
+        id: req_dc6f94ede8f0ea4d73c49f4de0376a75
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — subjectUserNav
+      url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow({{ _.key_ComplianceDocumentFlow }})/subjectUserNav'
+      method: GET
+      meta:
+        id: req_9a3d073d4ba5ac1fc5df1b3dfd7c86a4
+        description: 'Destino: User. Chaves: documentFlowCode (Edm.String). Execute Listar para preencher automaticamente
+          key_ComplianceDocumentFlow. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+    - name: Expandir — subjectUserNav
+      url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow'
+      method: GET
+      meta:
+        id: req_1786767f2363895ab980ccc6e9dd2ecf
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: subjectUserNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow({{ _.key_ComplianceDocumentFlow }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_5ebd56e1288cbfd7f16da476d20174ac
+        description: 'Destino: WfRequest. Chaves: documentFlowCode (Edm.String). Execute Listar para preencher automaticamente
+          key_ComplianceDocumentFlow. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow'
+      method: GET
+      meta:
+        id: req_df735a0e52751e446be30c6e87f57b88
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+- name: ONB2BuddyActivity
+  meta:
+    id: fld_27d972099c656d5339cde4f91c68c465
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+    method: GET
+    meta:
+      id: req_1e51b1616738f1f0f9e740b93a866ac8
+      description: 'Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente key_ONB2BuddyActivity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id005
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: activityId,activityStatus,activityStatusDate,activityTitle,activityType,buddyPersonId,buddyUser,completedBy
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"activityId\": \"Edm.String\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_ONB2BuddyActivity', Object.entries(types).map(([k,t]) =>\
+        \ k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+    method: GET
+    meta:
+      id: req_9fb8afe77faf1247a1e5eee0a8ed9678
+      description: 'Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente key_ONB2BuddyActivity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: activityId,activityStatus,activityStatusDate,activityTitle,activityType,buddyPersonId,buddyUser,completedBy
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity({{ _.key_ONB2BuddyActivity }})'
+    method: GET
+    meta:
+      id: req_6f703fc69ba576654d508b46d7745183
+      description: 'Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente key_ONB2BuddyActivity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+    method: GET
+    meta:
+      id: req_c8ab0ec376c65cd882d996717fae4543
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: activityId eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity/$count'
+    method: GET
+    meta:
+      id: req_dbe4c6c47135f1d838d0fdce7de70d4d
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_4fe7706aeacb379a7e831d6ee43bc5ae
+      description: ''
+    children:
+    - name: Navegar — buddyUserNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity({{ _.key_ONB2BuddyActivity }})/buddyUserNav'
+      method: GET
+      meta:
+        id: req_7268cd8ac5c04cd12572cc42b67e20a5
+        description: 'Destino: User. Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2BuddyActivity. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — buddyUserNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+      method: GET
+      meta:
+        id: req_a1ef298d29930120aa1db71e61bb107b
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: buddyUserNav
+        disabled: false
+    - name: Navegar — completedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity({{ _.key_ONB2BuddyActivity }})/completedByNav'
+      method: GET
+      meta:
+        id: req_0ceae8f5fedd9b1511502183f2a976cf
+        description: 'Destino: User. Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2BuddyActivity. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — completedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+      method: GET
+      meta:
+        id: req_368a5e375a5d2eeaecc6fa611e495c17
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: completedByNav
+        disabled: false
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity({{ _.key_ONB2BuddyActivity }})/createdByNav'
+      method: GET
+      meta:
+        id: req_c1da98c0184b5b422597c3afa1278891
+        description: 'Destino: User. Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2BuddyActivity. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+      method: GET
+      meta:
+        id: req_2177b2c3b20d8a44037c3a6f7dc6b6e3
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity({{ _.key_ONB2BuddyActivity }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_fb1a1717f0ee2897923f8b06746adc47
+        description: 'Destino: User. Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2BuddyActivity. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+      method: GET
+      meta:
+        id: req_07a1188860eb1d40f625d13f0868733b
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — lastNudgedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity({{ _.key_ONB2BuddyActivity }})/lastNudgedByNav'
+      method: GET
+      meta:
+        id: req_aefcbcf84e9bbc6c0fff25f3570c8bcc
+        description: 'Destino: User. Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2BuddyActivity. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — lastNudgedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+      method: GET
+      meta:
+        id: req_e0534efc3139478d974b579e659d8dd1
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastNudgedByNav
+        disabled: false
+    - name: Navegar — processNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity({{ _.key_ONB2BuddyActivity }})/processNav'
+      method: GET
+      meta:
+        id: req_25d8794762ab5b82b0dc0735884c7eb6
+        description: 'Destino: ONB2Process. Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2BuddyActivity. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — processNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+      method: GET
+      meta:
+        id: req_aba4a1c5a7b900932190ea709bae9d02
+        description: 'Destino: ONB2Process. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: processNav
+        disabled: false
+    - name: Navegar — subjectUserNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity({{ _.key_ONB2BuddyActivity }})/subjectUserNav'
+      method: GET
+      meta:
+        id: req_1a760d0f6848d89ed761674bfebe4a1d
+        description: 'Destino: User. Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2BuddyActivity. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — subjectUserNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+      method: GET
+      meta:
+        id: req_e00cde38b2604ee0dce18f29a46cfa58
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: subjectUserNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity({{ _.key_ONB2BuddyActivity }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_65cfe6cd8dfcf4133d800a52516f7d8b
+        description: 'Destino: WfRequest. Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2BuddyActivity. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+      method: GET
+      meta:
+        id: req_da2faedd14c7247d1ffa67994400889a
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+- name: ONB2DataCollectionUserConfig
+  meta:
+    id: fld_20ceb541c23bae234f25c80b80096ba5
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig'
+    method: GET
+    meta:
+      id: req_212d17c9559b98ab80ce1d33ac48144a
+      description: 'Chaves: id (Edm.String). Execute Listar para preencher automaticamente key_ONB2DataCollectionUserConfig.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id006
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: id,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemRecordStatus,process,subjectUser
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"id\": \"Edm.String\"};\n\
+        if (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_ONB2DataCollectionUserConfig', Object.entries(types).map(([k,t])\
+        \ => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig'
+    method: GET
+    meta:
+      id: req_506829a2a3258a7bddbc5e2b320f7c99
+      description: 'Chaves: id (Edm.String). Execute Listar para preencher automaticamente key_ONB2DataCollectionUserConfig.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: id,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemRecordStatus,process,subjectUser
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig({{ _.key_ONB2DataCollectionUserConfig }})'
+    method: GET
+    meta:
+      id: req_52a8321f3362192194ce7415ad7ee641
+      description: 'Chaves: id (Edm.String). Execute Listar para preencher automaticamente key_ONB2DataCollectionUserConfig.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig'
+    method: GET
+    meta:
+      id: req_7d0d625924a2737df2b127800d2a90f0
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: id eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig/$count'
+    method: GET
+    meta:
+      id: req_2251490702b41f9caab2658a592d92b5
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_92f35487be979fad3e272718ee09ccda
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig({{ _.key_ONB2DataCollectionUserConfig }})/createdByNav'
+      method: GET
+      meta:
+        id: req_7ca9fdb8bceb464d26ab8df16a23519b
+        description: 'Destino: User. Chaves: id (Edm.String). Execute Listar para preencher automaticamente key_ONB2DataCollectionUserConfig.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig'
+      method: GET
+      meta:
+        id: req_e86ec24cdbdd1670badb1114445aa3e7
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig({{ _.key_ONB2DataCollectionUserConfig }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_98dea588de8d7d39734d0865dca36189
+        description: 'Destino: User. Chaves: id (Edm.String). Execute Listar para preencher automaticamente key_ONB2DataCollectionUserConfig.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig'
+      method: GET
+      meta:
+        id: req_23820c481aefa21276e297ad2dc54ba2
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — processNav
+      url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig({{ _.key_ONB2DataCollectionUserConfig }})/processNav'
+      method: GET
+      meta:
+        id: req_15d2cd937fea9be2583a94e3dbe76ad4
+        description: 'Destino: ONB2Process. Chaves: id (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2DataCollectionUserConfig. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — processNav
+      url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig'
+      method: GET
+      meta:
+        id: req_3a10b7cd863adef16822ef18d14d5b20
+        description: 'Destino: ONB2Process. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: processNav
+        disabled: false
+    - name: Navegar — subjectUserNav
+      url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig({{ _.key_ONB2DataCollectionUserConfig }})/subjectUserNav'
+      method: GET
+      meta:
+        id: req_02b1fa5d2bf0ca78342c053c79620eba
+        description: 'Destino: User. Chaves: id (Edm.String). Execute Listar para preencher automaticamente key_ONB2DataCollectionUserConfig.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — subjectUserNav
+      url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig'
+      method: GET
+      meta:
+        id: req_56e4a4243557e29a72f3739dac810655
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: subjectUserNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig({{ _.key_ONB2DataCollectionUserConfig }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_c535971b6fe71b3217a529318efcf8d0
+        description: 'Destino: WfRequest. Chaves: id (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2DataCollectionUserConfig. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ONB2DataCollectionUserConfig'
+      method: GET
+      meta:
+        id: req_b48fcf3304732ef424abc4e0703dbea1
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+- name: ONB2EquipmentType
+  meta:
+    id: fld_4ae24b51c19530887c1d4affe1a49779
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType'
+    method: GET
+    meta:
+      id: req_8f4ed701185ddcdbd0b15dfea7c09935
+      description: 'Chaves: code (Edm.String). Execute Listar para preencher automaticamente key_ONB2EquipmentType.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id007
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: code,createdBy,createdDateTime,description_defaultValue,description_en_DEBUG,description_en_US,description_localized,description_pt_BR
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"code\": \"Edm.String\"};\n\
+        if (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_ONB2EquipmentType', Object.entries(types).map(([k,t]) =>\
+        \ k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType'
+    method: GET
+    meta:
+      id: req_8526683c9d4be0b5fc8aed609c83c8d6
+      description: 'Chaves: code (Edm.String). Execute Listar para preencher automaticamente key_ONB2EquipmentType.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: code,createdBy,createdDateTime,description_defaultValue,description_en_DEBUG,description_en_US,description_localized,description_pt_BR
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType({{ _.key_ONB2EquipmentType }})'
+    method: GET
+    meta:
+      id: req_984926647693c30193de6a24cd40a04d
+      description: 'Chaves: code (Edm.String). Execute Listar para preencher automaticamente key_ONB2EquipmentType.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType'
+    method: GET
+    meta:
+      id: req_4981d99f2ad7f85380ba491b6f13873d
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: code eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType/$count'
+    method: GET
+    meta:
+      id: req_bbc844fdf85a2a0ed7afcbfc8248cf03
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_0b31d67fda9ab53df7231dc0fe1c97dd
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType({{ _.key_ONB2EquipmentType }})/createdByNav'
+      method: GET
+      meta:
+        id: req_7b5397916402ecaa2860aa4e0f084817
+        description: 'Destino: User. Chaves: code (Edm.String). Execute Listar para preencher automaticamente key_ONB2EquipmentType.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType'
+      method: GET
+      meta:
+        id: req_4e0e68de6f9f9fcdfaeb62d8c539c5c9
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — iconNav
+      url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType({{ _.key_ONB2EquipmentType }})/iconNav'
+      method: GET
+      meta:
+        id: req_6addb8c4c4fe2236f920fdc86eec6dec
+        description: 'Destino: Attachment. Chaves: code (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2EquipmentType. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+    - name: Expandir — iconNav
+      url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType'
+      method: GET
+      meta:
+        id: req_1726351d31d6034d2029d66f40fc1356
+        description: 'Destino: Attachment. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: iconNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType({{ _.key_ONB2EquipmentType }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_6f6f981d7e5e7e5842c80ea996e3295e
+        description: 'Destino: User. Chaves: code (Edm.String). Execute Listar para preencher automaticamente key_ONB2EquipmentType.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType'
+      method: GET
+      meta:
+        id: req_5c17416037313060d02dc03be6356ece
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType({{ _.key_ONB2EquipmentType }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_7eb45c50bc6b4aa670902177d569fde0
+        description: 'Destino: WfRequest. Chaves: code (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2EquipmentType. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType'
+      method: GET
+      meta:
+        id: req_da1efcdf07398ff29ee09e62002727d4
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+- name: ONB2Process
+  meta:
+    id: fld_4d4aab8c2fa74b5f31fe8963a28e2ab7
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/ONB2Process'
+    method: GET
+    meta:
+      id: req_12f07ac9c5cab09082648ebbe34deb78
+      description: 'Chaves: processId (Edm.String). Execute Listar para preencher automaticamente key_ONB2Process.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id008
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: processId,activitiesConfig,activitiesStatus,alumniStatus,bpeProcessInstanceId,cancelEventReason,cancelOffboardingReason,cancelOnboardingReason,cancellationComment
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"processId\": \"Edm.String\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_ONB2Process', Object.entries(types).map(([k,t]) => k +\
+        \ '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/ONB2Process'
+    method: GET
+    meta:
+      id: req_4f0f1438b7305267f46df7c2c8ab5f83
+      description: 'Chaves: processId (Edm.String). Execute Listar para preencher automaticamente key_ONB2Process.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: processId,activitiesConfig,activitiesStatus,alumniStatus,bpeProcessInstanceId,cancelEventReason,cancelOffboardingReason,cancelOnboardingReason,cancellationComment
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})'
+    method: GET
+    meta:
+      id: req_863cc5781c6f0f36c34302bb0e057e18
+      description: 'Chaves: processId (Edm.String). Execute Listar para preencher automaticamente key_ONB2Process.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/ONB2Process'
+    method: GET
+    meta:
+      id: req_7b1112a79113b9895e12949c55fb2cbc
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: processId eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/ONB2Process/$count'
+    method: GET
+    meta:
+      id: req_9efcff0b22c746b38305f10c45bcb7e2
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: 06 — Data de referencia
+    url: '{{ _.base_url }}/odata/v2/ONB2Process'
+    method: GET
+    meta:
+      id: req_9b5b6b999b513b8ece9799fee2c53570
+      description: Consulta temporal; ajuste as_of_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: asOfDate
+      value: '{{ _.as_of_date }}'
+      disabled: false
+  - name: 07 — Historico por periodo
+    url: '{{ _.base_url }}/odata/v2/ONB2Process'
+    method: GET
+    meta:
+      id: req_cf9d6cefcec08808cf8daafb4ecdee2d
+      description: Consulta temporal; ajuste from_date e to_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: fromDate
+      value: '{{ _.from_date }}'
+      disabled: false
+    - name: toDate
+      value: '{{ _.to_date }}'
+      disabled: false
+  - name: Relacionamentos
+    meta:
+      id: fld_da4faace07c8526d6f9c32c1af982140
+      description: ''
+    children:
+    - name: Navegar — cancelEventReasonNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/cancelEventReasonNav'
+      method: GET
+      meta:
+        id: req_e10ade5a4cd130deff2b126bfc6eba4c
+        description: 'Destino: FOEventReason. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — cancelEventReasonNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_78d9ec4d24201d7bfc37a472c9066a0a
+        description: 'Destino: FOEventReason. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: cancelEventReasonNav
+        disabled: false
+    - name: Navegar — cancelOffboardingReasonNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/cancelOffboardingReasonNav'
+      method: GET
+      meta:
+        id: req_f851bf0686b1ddf21ff089f034037b04
+        description: 'Destino: PickListValueV2. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — cancelOffboardingReasonNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_2c706538bae62458761bce8830230053
+        description: 'Destino: PickListValueV2. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: cancelOffboardingReasonNav
+        disabled: false
+    - name: Navegar — cancelOnboardingReasonNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/cancelOnboardingReasonNav'
+      method: GET
+      meta:
+        id: req_46b46c1a4d5d75d5a1c99f6707a110aa
+        description: 'Destino: PickListValueV2. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — cancelOnboardingReasonNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_afde9dd2d54538bed928bd89513eadc9
+        description: 'Destino: PickListValueV2. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: cancelOnboardingReasonNav
+        disabled: false
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/createdByNav'
+      method: GET
+      meta:
+        id: req_ae75adb9c6006759ec7338bebac43622
+        description: 'Destino: User. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_dfa5222c014bf535692aeda0e9dcb3e3
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_dfdc13d1081a6f0f45d6288bf71406db
+        description: 'Destino: User. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_85c5d696ed4c560805fdaf930b2b3e51
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — managerNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/managerNav'
+      method: GET
+      meta:
+        id: req_844b757e07f5a72116771a183875bdf8
+        description: 'Destino: User. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — managerNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_e16911ac2b0542ac04c916f6cb37a716
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: managerNav
+        disabled: false
+    - name: Navegar — processTasks
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/processTasks'
+      method: GET
+      meta:
+        id: req_b9c7a9be041da8f64f655254aaf42677
+        description: 'Destino: ONB2ProcessTask. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — processTasks
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_2fb6f08e4c16212eefd176b4f14bd1cb
+        description: 'Destino: ONB2ProcessTask. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: processTasks
+        disabled: false
+    - name: Navegar — processTriggerNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/processTriggerNav'
+      method: GET
+      meta:
+        id: req_197c9b9ae400956f3a2e5647d547da21
+        description: 'Destino: ONB2ProcessTrigger. Chaves: processId (Edm.String). Execute Listar para preencher
+          automaticamente key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — processTriggerNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_ce263526c82f6734e1f338d4a9f26774
+        description: 'Destino: ONB2ProcessTrigger. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: processTriggerNav
+        disabled: false
+    - name: Navegar — toBuddyActivity
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/toBuddyActivity'
+      method: GET
+      meta:
+        id: req_a9d5fd7d92875ef76256cf23070a8e7a
+        description: 'Destino: ONB2BuddyActivity. Chaves: processId (Edm.String). Execute Listar para preencher
+          automaticamente key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — toBuddyActivity
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_37f7ae02986f879652affbd1a27fac6e
+        description: 'Destino: ONB2BuddyActivity. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: toBuddyActivity
+        disabled: false
+    - name: Navegar — toDataCollectionUserConfig
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/toDataCollectionUserConfig'
+      method: GET
+      meta:
+        id: req_d9f26a4fda9c124d7fc98ed5b545278e
+        description: 'Destino: ONB2DataCollectionUserConfig. Chaves: processId (Edm.String). Execute Listar para
+          preencher automaticamente key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — toDataCollectionUserConfig
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_b6e530b7c7d8a28bb824cba42c0a4f8d
+        description: 'Destino: ONB2DataCollectionUserConfig. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: toDataCollectionUserConfig
+        disabled: false
+    - name: Navegar — userNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/userNav'
+      method: GET
+      meta:
+        id: req_bd667613029046d3f1615040c083a68e
+        description: 'Destino: User. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — userNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_9bb5bbccf0678f99a12dc9e7bc523672
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_edfb6411e85e77ba69295f30b0b65c66
+        description: 'Destino: WfRequest. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2Process. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ONB2Process'
+      method: GET
+      meta:
+        id: req_eb379c9b4b0aa553a984a948ede23177
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+- name: ONB2ProcessTask
+  meta:
+    id: fld_84c0de59e027320ae506646bf362c761
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask'
+    method: GET
+    meta:
+      id: req_3f49807f2bf11ab8157c7d28c778d02f
+      description: 'Chaves: ONB2Process_processId (Edm.String), taskId (Edm.String). Execute Listar para preencher
+        automaticamente key_ONB2ProcessTask. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id009
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: ONB2Process_processId,taskId,comment,completedBy,createdBy,createdDateTime,endDate,lastModifiedBy,lastModifiedDateTime
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"ONB2Process_processId\":\
+        \ \"Edm.String\", \"taskId\": \"Edm.String\"};\nif (first && Object.keys(types).length && Object.keys(types).every(k\
+        \ => first[k] !== undefined && first[k] !== null)) {\n  const literal = (type, value) => {\n    if (type\
+        \ === 'Edm.String') return \"'\" + String(value).replaceAll(\"'\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime'\
+        \ || type === 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\\
+        d{4})?\\)\\/$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z', type\
+        \ === 'Edm.DateTime' ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset')\
+        \ + \"'\" + iso + \"'\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return\
+        \ String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n\
+        \  };\n  insomnia.environment.set('key_ONB2ProcessTask', Object.entries(types).map(([k,t]) => k + '=' +\
+        \ literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask'
+    method: GET
+    meta:
+      id: req_f9885a2abe2a2627033f95685412a43a
+      description: 'Chaves: ONB2Process_processId (Edm.String), taskId (Edm.String). Execute Listar para preencher
+        automaticamente key_ONB2ProcessTask. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: ONB2Process_processId,taskId,comment,completedBy,createdBy,createdDateTime,endDate,lastModifiedBy,lastModifiedDateTime
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask({{ _.key_ONB2ProcessTask }})'
+    method: GET
+    meta:
+      id: req_fbf75fe1d26021109ed3318e4f2afde2
+      description: 'Chaves: ONB2Process_processId (Edm.String), taskId (Edm.String). Execute Listar para preencher
+        automaticamente key_ONB2ProcessTask. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask'
+    method: GET
+    meta:
+      id: req_75884b2a8b37b5e9fb8a0b5409e1c8ff
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: ONB2Process_processId eq 'REPLACE_ME' and taskId eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask/$count'
+    method: GET
+    meta:
+      id: req_1bd9d5ab9fbfd7e580f6e02e08598791
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: 06 — Data de referencia
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask'
+    method: GET
+    meta:
+      id: req_ad8ec8e3dd51be843be61c8404270086
+      description: Consulta temporal; ajuste as_of_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: asOfDate
+      value: '{{ _.as_of_date }}'
+      disabled: false
+  - name: 07 — Historico por periodo
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask'
+    method: GET
+    meta:
+      id: req_b63335ad0f99cc25694c703062e737cf
+      description: Consulta temporal; ajuste from_date e to_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: fromDate
+      value: '{{ _.from_date }}'
+      disabled: false
+    - name: toDate
+      value: '{{ _.to_date }}'
+      disabled: false
+  - name: Relacionamentos
+    meta:
+      id: fld_f1df23fad4eadc8b75cacbed91a43445
+      description: ''
+    children:
+    - name: Navegar — completedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask({{ _.key_ONB2ProcessTask }})/completedByNav'
+      method: GET
+      meta:
+        id: req_84fc63f88fde7549fbdfba81065a5b16
+        description: 'Destino: User. Chaves: ONB2Process_processId (Edm.String), taskId (Edm.String). Execute Listar
+          para preencher automaticamente key_ONB2ProcessTask. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — completedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask'
+      method: GET
+      meta:
+        id: req_496580fd923027f99c1567620d4612a4
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: completedByNav
+        disabled: false
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask({{ _.key_ONB2ProcessTask }})/createdByNav'
+      method: GET
+      meta:
+        id: req_71fe3582914f43b02dc6f87c1b66186e
+        description: 'Destino: User. Chaves: ONB2Process_processId (Edm.String), taskId (Edm.String). Execute Listar
+          para preencher automaticamente key_ONB2ProcessTask. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask'
+      method: GET
+      meta:
+        id: req_a4a7de11d3c2cda0749f7ef93d1b82f4
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask({{ _.key_ONB2ProcessTask }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_2927688eb0da71b45fd6ae634b33e3e5
+        description: 'Destino: User. Chaves: ONB2Process_processId (Edm.String), taskId (Edm.String). Execute Listar
+          para preencher automaticamente key_ONB2ProcessTask. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask'
+      method: GET
+      meta:
+        id: req_c72f06b911ba775dcc9d975f2e90be8d
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — restartedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask({{ _.key_ONB2ProcessTask }})/restartedByNav'
+      method: GET
+      meta:
+        id: req_21f54de8f3738e9c9e29d89b4bff400b
+        description: 'Destino: User. Chaves: ONB2Process_processId (Edm.String), taskId (Edm.String). Execute Listar
+          para preencher automaticamente key_ONB2ProcessTask. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — restartedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask'
+      method: GET
+      meta:
+        id: req_2fa07080590a247b56e3e86c3a357f51
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: restartedByNav
+        disabled: false
+- name: ONB2ProcessTrigger
+  meta:
+    id: fld_243a961697056f3444f75201040a8b75
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger'
+    method: GET
+    meta:
+      id: req_167304221af2d96d18b2eed6a360b181
+      description: 'Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente key_ONB2ProcessTrigger.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id010
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: triggerId,atsApplicationId,atsUserId,bpeProcessInstanceId,createdBy,createdDateTime,hireType,jobInfoId,lastModifiedBy
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"triggerId\": \"Edm.String\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_ONB2ProcessTrigger', Object.entries(types).map(([k,t])\
+        \ => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger'
+    method: GET
+    meta:
+      id: req_4615c2f3a243d0158d69cf8d9b55e97f
+      description: 'Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente key_ONB2ProcessTrigger.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id010
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: triggerId,atsApplicationId,atsUserId,bpeProcessInstanceId,createdBy,createdDateTime,hireType,jobInfoId,lastModifiedBy
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger({{ _.key_ONB2ProcessTrigger }})'
+    method: GET
+    meta:
+      id: req_06df968ff8c04be37341eb8547e90964
+      description: 'Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente key_ONB2ProcessTrigger.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id010
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger'
+    method: GET
+    meta:
+      id: req_5830b3bf260f4336ea3fc4846770b50a
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id010
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: triggerId eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger/$count'
+    method: GET
+    meta:
+      id: req_8632ab980f89cc48eaeead6ca284b045
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_454bf3a8e456fc75d1f7996c54f92cc8
+      description: ''
+    children:
+    - name: Navegar — atsUserIdNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger({{ _.key_ONB2ProcessTrigger }})/atsUserIdNav'
+      method: GET
+      meta:
+        id: req_5eec4dd20bd272655ad21045ae685836
+        description: 'Destino: User. Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2ProcessTrigger. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+    - name: Expandir — atsUserIdNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger'
+      method: GET
+      meta:
+        id: req_b0b779544fe3d70fd1471d4d568f9fc3
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: atsUserIdNav
+        disabled: false
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger({{ _.key_ONB2ProcessTrigger }})/createdByNav'
+      method: GET
+      meta:
+        id: req_ab4c9649e551cc3383ccf01760c71d65
+        description: 'Destino: User. Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2ProcessTrigger. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger'
+      method: GET
+      meta:
+        id: req_6288ff8966772548e8d5817ce022c68d
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger({{ _.key_ONB2ProcessTrigger }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_4fa10666cb20f2adb88846cf193e77d2
+        description: 'Destino: User. Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2ProcessTrigger. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger'
+      method: GET
+      meta:
+        id: req_fca37bf2247ccb865fdb81bbf65471c4
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — rehireUserNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger({{ _.key_ONB2ProcessTrigger }})/rehireUserNav'
+      method: GET
+      meta:
+        id: req_857acd3cdaae9994d9ae065c524e0bb1
+        description: 'Destino: User. Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2ProcessTrigger. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+    - name: Expandir — rehireUserNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger'
+      method: GET
+      meta:
+        id: req_28c48ba8b61e0994aa1bd5a1972690ad
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: rehireUserNav
+        disabled: false
+    - name: Navegar — toProcess
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger({{ _.key_ONB2ProcessTrigger }})/toProcess'
+      method: GET
+      meta:
+        id: req_898e013c87540869ae3f41d33c087ded
+        description: 'Destino: ONB2Process. Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2ProcessTrigger. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+    - name: Expandir — toProcess
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger'
+      method: GET
+      meta:
+        id: req_253427f60b8614af0c79dfc0c8dfdcf4
+        description: 'Destino: ONB2Process. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: toProcess
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger({{ _.key_ONB2ProcessTrigger }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_85e42e6d96140ff28c7d257c8f31875e
+        description: 'Destino: WfRequest. Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente
+          key_ONB2ProcessTrigger. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger'
+      method: GET
+      meta:
+        id: req_991d4bd227d94ae0c36e2b60feed7363
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+environments:
+  name: Base Environment
+  meta:
+    id: env_2c7d080d2c80d3a4f98d09f4d76e44f4
+  data:
+    next_page_url: ''
+    key_ComplianceDocumentFlow: documentFlowCode='REPLACE_ME'
+    key_ONB2BuddyActivity: activityId='REPLACE_ME'
+    key_ONB2DataCollectionUserConfig: id='REPLACE_ME'
+    key_ONB2EquipmentType: code='REPLACE_ME'
+    key_ONB2Process: processId='REPLACE_ME'
+    key_ONB2ProcessTask: ONB2Process_processId='REPLACE_ME',taskId='REPLACE_ME'
+    key_ONB2ProcessTrigger: triggerId='REPLACE_ME'

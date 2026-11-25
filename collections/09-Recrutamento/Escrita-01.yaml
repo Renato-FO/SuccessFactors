@@ -1,0 +1,1192 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Recrutamento | Escrita 01
+meta:
+  id: wrk_e49e7306d959603e37e397451b6e6e39
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_2df2a52b14c55bbb62ad6e024eb37f9e
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_95607c6f1f6f826fe630086ce3160b1b
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_c4a7314fd5027d9a21e9fe2f3983cf3f
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_2f6bc3bb33c7f6bf57dd835b989fb067
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_d16adac555ce01eacb5651cab85fad16
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: Candidate
+  meta:
+    id: fld_a492d212901f22d32a1ae9153fac541c
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/Candidate'
+    method: POST
+    meta:
+      id: req_75b6bcceb377163000808771726cdaaa
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: candidateId (Edm.Int64). Execute Listar para preencher automaticamente key_Candidate.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id004
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"cellPhone\": \"REPLACE_ME\",\n  \"contactEmail\": \"REPLACE_ME\",\n  \"firstName\": \"REPLACE_ME\"\
+        ,\n  \"lastName\": \"REPLACE_ME\",\n  \"primaryEmail\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/Candidate({{ _.key_Candidate }})'
+    method: MERGE
+    meta:
+      id: req_1c74984bd41ff35d68fdb5c2392ec26f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: candidateId (Edm.Int64). Execute Listar para preencher automaticamente key_Candidate.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "{\n  \"candidateId\": \"0\",\n  \"cellPhone\": \"REPLACE_ME\",\n  \"contactEmail\": \"REPLACE_ME\"\
+        ,\n  \"firstName\": \"REPLACE_ME\",\n  \"lastName\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_f8b9e28ec92d80a1b1b00cd4a0e133bb
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: candidateId (Edm.Int64). Execute Listar para preencher automaticamente key_Candidate.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"Candidate\"\n    },\n    \"candidateId\": \"0\",\n\
+        \    \"cellPhone\": \"REPLACE_ME\",\n    \"contactEmail\": \"REPLACE_ME\",\n    \"firstName\": \"REPLACE_ME\"\
+        ,\n    \"lastName\": \"REPLACE_ME\",\n    \"primaryEmail\": \"REPLACE_ME\"\n  }\n]"
+- name: CandidateLight
+  meta:
+    id: fld_7cdbab749a83f798a46625ae965ca225
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/CandidateLight'
+    method: POST
+    meta:
+      id: req_00bca7d7224ecf0556a8e938854e8529
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: candidateId (Edm.Int64). Execute Listar para preencher automaticamente key_CandidateLight.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id005
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"country\": \"REPLACE_ME\",\n  \"firstName\": \"REPLACE_ME\",\n  \"lastName\": \"REPLACE_ME\"\
+        ,\n  \"primaryEmail\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/CandidateLight({{ _.key_CandidateLight }})'
+    method: MERGE
+    meta:
+      id: req_d345547062ab2b40137512ce9550ed26
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: candidateId (Edm.Int64). Execute Listar para preencher automaticamente key_CandidateLight.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "{\n  \"candidateId\": \"0\",\n  \"country\": \"REPLACE_ME\",\n  \"firstName\": \"REPLACE_ME\",\n  \"\
+        lastName\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_9380327a843f2e8ee3e3fe25c1f67869
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: candidateId (Edm.Int64). Execute Listar para preencher automaticamente key_CandidateLight.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"CandidateLight\"\n    },\n    \"candidateId\": \"0\"\
+        ,\n    \"country\": \"REPLACE_ME\",\n    \"firstName\": \"REPLACE_ME\",\n    \"lastName\": \"REPLACE_ME\"\
+        ,\n    \"primaryEmail\": \"REPLACE_ME\"\n  }\n]"
+- name: CandidateTags
+  meta:
+    id: fld_7e8b2940c5734225803418e1c378f91a
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/CandidateTags'
+    method: POST
+    meta:
+      id: req_ab4e5f6bcf613624c3874ab7e1e253dc
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: tagId (Edm.Int64). Execute Listar para preencher automaticamente key_CandidateTags. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id006
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"candidateId\": \"0\",\n  \"label\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/CandidateTags({{ _.key_CandidateTags }})'
+    method: MERGE
+    meta:
+      id: req_bceb83dd891892727c9bf50687ed17e9
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: tagId (Edm.Int64). Execute Listar para preencher automaticamente key_CandidateTags. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "{\n  \"tagId\": \"0\",\n  \"candidateId\": \"0\",\n  \"label\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_1505e9960a5f41bc8775a013bc87ad3d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: tagId (Edm.Int64). Execute Listar para preencher automaticamente key_CandidateTags. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"CandidateTags\"\n    },\n    \"tagId\": \"0\",\n  \
+        \  \"candidateId\": \"0\",\n    \"label\": \"REPLACE_ME\"\n  }\n]"
+- name: InterviewIndividualAssessment
+  meta:
+    id: fld_267cb43607e607401ae5f3ef4aba134d
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/InterviewIndividualAssessment'
+    method: POST
+    meta:
+      id: req_6342cd2146b303d5383ef0a42cc6325a
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: interviewIndividualAssessmentId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_InterviewIndividualAssessment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id007
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: '{}'
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/InterviewIndividualAssessment({{ _.key_InterviewIndividualAssessment }})'
+    method: MERGE
+    meta:
+      id: req_c1d389f68c3ba5d9953758954f0f7f0f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: interviewIndividualAssessmentId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_InterviewIndividualAssessment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id007
+    body:
+      mimeType: application/json
+      text: "{\n  \"interviewIndividualAssessmentId\": \"0\",\n  \"interviewOverallAssessmentId\": \"0\",\n  \"\
+        refId\": \"0\",\n  \"type\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_1b900a2828026de49cc96c37e24f1b67
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: interviewIndividualAssessmentId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_InterviewIndividualAssessment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id007
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"InterviewIndividualAssessment\"\n    },\n    \"interviewIndividualAssessmentId\"\
+        : \"0\",\n    \"interviewOverallAssessmentId\": \"0\",\n    \"refId\": \"0\",\n    \"type\": \"REPLACE_ME\"\
+        \n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/InterviewIndividualAssessment({{ _.key_InterviewIndividualAssessment }})'
+    method: DELETE
+    meta:
+      id: req_3fcf5436330c2153b9e0c7c9adb19431
+      description: 'Exclui o registro identificado pela chave. Chaves: interviewIndividualAssessmentId (Edm.Int64).
+        Execute Listar para preencher automaticamente key_InterviewIndividualAssessment. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: InterviewOverallAssessment
+  meta:
+    id: fld_f0e39f6344e331d44e781effbf34717d
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/InterviewOverallAssessment'
+    method: POST
+    meta:
+      id: req_7622ff7e371220f9d9db1c105744ac71
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: interviewOverallAssessmentId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_InterviewOverallAssessment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id008
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: '{}'
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/InterviewOverallAssessment({{ _.key_InterviewOverallAssessment }})'
+    method: MERGE
+    meta:
+      id: req_ae5c2645b6f23319a851c978f4014335
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: interviewOverallAssessmentId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_InterviewOverallAssessment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id008
+    body:
+      mimeType: application/json
+      text: "{\n  \"interviewOverallAssessmentId\": \"0\",\n  \"interviewRefId\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_38de4c68547a83e04b4c6451b712a72c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: interviewOverallAssessmentId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_InterviewOverallAssessment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id008
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"InterviewOverallAssessment\"\n    },\n    \"interviewOverallAssessmentId\"\
+        : \"0\",\n    \"interviewRefId\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/InterviewOverallAssessment({{ _.key_InterviewOverallAssessment }})'
+    method: DELETE
+    meta:
+      id: req_0d6f106f1ef09c57c72b0d9727ca45dc
+      description: 'Exclui o registro identificado pela chave. Chaves: interviewOverallAssessmentId (Edm.Int64).
+        Execute Listar para preencher automaticamente key_InterviewOverallAssessment. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: InterviewQuestionEntity
+  meta:
+    id: fld_f360ff610944aabf8800f366c333c37a
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/InterviewQuestionEntity'
+    method: POST
+    meta:
+      id: req_d4a2559b9d858d4adbb4812f5e25a0e9
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_InterviewQuestionEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id009
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/InterviewQuestionEntity({{ _.key_InterviewQuestionEntity }})'
+    method: MERGE
+    meta:
+      id: req_7549f2a7b0fda3bfcad525f27bff4099
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_InterviewQuestionEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id009
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_76b8d26d5a35e886d8fee8aa384a54a3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_InterviewQuestionEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id009
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"InterviewQuestionEntity\"\n    },\n    \"externalCode\"\
+        : \"REPLACE_ME\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/InterviewQuestionEntity({{ _.key_InterviewQuestionEntity }})'
+    method: DELETE
+    meta:
+      id: req_a05897e93a25c16451af4022ef1b1647
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_InterviewQuestionEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobApplication
+  meta:
+    id: fld_4099e9d34a566f92f16df53675a3acc2
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobApplication'
+    method: POST
+    meta:
+      id: req_c50de480c7a0c8e28969f572f4695d3a
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: applicationId (Edm.Int64). Execute Listar para preencher automaticamente key_JobApplication.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id010
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"cellPhone\": \"REPLACE_ME\",\n  \"contactEmail\": \"REPLACE_ME\",\n  \"country\": \"REPLACE_ME\"\
+        ,\n  \"firstName\": \"REPLACE_ME\",\n  \"lastName\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobApplication({{ _.key_JobApplication }})'
+    method: MERGE
+    meta:
+      id: req_c7057c3faa95ebae6160b2118ba794b3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: applicationId (Edm.Int64). Execute Listar para preencher automaticamente key_JobApplication.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id010
+    body:
+      mimeType: application/json
+      text: "{\n  \"applicationId\": \"0\",\n  \"cellPhone\": \"REPLACE_ME\",\n  \"contactEmail\": \"REPLACE_ME\"\
+        ,\n  \"country\": \"REPLACE_ME\",\n  \"firstName\": \"REPLACE_ME\",\n  \"lastName\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_239bd0bb6e69289bf84f03e75ef7e3c1
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: applicationId (Edm.Int64). Execute Listar para preencher automaticamente key_JobApplication.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id010
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobApplication\"\n    },\n    \"applicationId\": \"\
+        0\",\n    \"cellPhone\": \"REPLACE_ME\",\n    \"contactEmail\": \"REPLACE_ME\",\n    \"country\": \"REPLACE_ME\"\
+        ,\n    \"firstName\": \"REPLACE_ME\",\n    \"lastName\": \"REPLACE_ME\"\n  }\n]"
+- name: JobApplicationInterview
+  meta:
+    id: fld_7ca1c9fa649936f7ec46b86a9e77aef4
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobApplicationInterview'
+    method: POST
+    meta:
+      id: req_9351aa6762084e94537b65f068c773f7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: applicationInterviewId (Edm.Int64). Execute Listar para preencher automaticamente key_JobApplicationInterview.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id011
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"applicationId\": \"0\",\n  \"source\": \"REPLACE_ME\",\n  \"templateType\": \"REPLACE_ME\"\n\
+        }"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobApplicationInterview({{ _.key_JobApplicationInterview }})'
+    method: MERGE
+    meta:
+      id: req_cb959697da96816c597b3b2a659dd519
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: applicationInterviewId (Edm.Int64). Execute Listar para preencher automaticamente key_JobApplicationInterview.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id011
+    body:
+      mimeType: application/json
+      text: "{\n  \"applicationInterviewId\": \"0\",\n  \"source\": \"REPLACE_ME\",\n  \"templateType\": \"REPLACE_ME\"\
+        \n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_06411950f91a020a93978d12b476d7c8
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: applicationInterviewId (Edm.Int64). Execute Listar para preencher automaticamente key_JobApplicationInterview.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id011
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobApplicationInterview\"\n    },\n    \"applicationInterviewId\"\
+        : \"0\",\n    \"applicationId\": \"0\",\n    \"source\": \"REPLACE_ME\",\n    \"templateType\": \"REPLACE_ME\"\
+        \n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobApplicationInterview({{ _.key_JobApplicationInterview }})'
+    method: DELETE
+    meta:
+      id: req_1c5868f1abfb13ca87f8fdca7d431ccf
+      description: 'Exclui o registro identificado pela chave. Chaves: applicationInterviewId (Edm.Int64). Execute
+        Listar para preencher automaticamente key_JobApplicationInterview. Campos e permissoes podem variar por
+        tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobApplicationQuestionResponse
+  meta:
+    id: fld_1f000de75d558a17ad0f06d2e254e6ec
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobApplicationQuestionResponse'
+    method: POST
+    meta:
+      id: req_dc67359df5b7b2754e475b52aac45c93
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: applicationId (Edm.Int64), order (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobApplicationQuestionResponse. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id012
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"answer\": \"REPLACE_ME\",\n  \"applicationId\": \"0\",\n  \"order\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_6181fdb60abbb0e8e0704dfaefb630e4
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: applicationId (Edm.Int64), order (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobApplicationQuestionResponse. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id012
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobApplicationQuestionResponse\"\n    },\n    \"applicationId\"\
+        : \"0\",\n    \"order\": \"0\",\n    \"answer\": \"REPLACE_ME\"\n  }\n]"
+- name: JobOffer
+  meta:
+    id: fld_44a5409349478e8d2d6d9b8c91e5b2a6
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobOffer'
+    method: POST
+    meta:
+      id: req_1638bd76beee35eefdbdd79e6f38d0ce
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: offerApprovalId (Edm.Int64). Execute Listar para preencher automaticamente key_JobOffer.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id013
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"candidateName\": \"REPLACE_ME\",\n  \"firstName\": \"REPLACE_ME\",\n  \"lastName\": \"REPLACE_ME\"\
+        \n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobOffer({{ _.key_JobOffer }})'
+    method: MERGE
+    meta:
+      id: req_960e7981ee33bbdaf0a3dc040e04b3c3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: offerApprovalId (Edm.Int64). Execute Listar para preencher automaticamente key_JobOffer.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id013
+    body:
+      mimeType: application/json
+      text: "{\n  \"offerApprovalId\": \"0\",\n  \"candidateName\": \"REPLACE_ME\",\n  \"firstName\": \"REPLACE_ME\"\
+        ,\n  \"lastName\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_14251ee9d275877b5652b9fd530e82cf
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: offerApprovalId (Edm.Int64). Execute Listar para preencher automaticamente key_JobOffer.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id013
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobOffer\"\n    },\n    \"offerApprovalId\": \"0\"\
+        ,\n    \"candidateName\": \"REPLACE_ME\",\n    \"firstName\": \"REPLACE_ME\",\n    \"lastName\": \"REPLACE_ME\"\
+        \n  }\n]"
+- name: JobReqFwdCandidates
+  meta:
+    id: fld_7019eab4b0c085a174306d4137688ebd
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobReqFwdCandidates'
+    method: POST
+    meta:
+      id: req_7b9460bc012a89639212928f58a26e2e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: candidateId (Edm.Int64), jobReqId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobReqFwdCandidates. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id014
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"candidateId\": \"0\",\n  \"jobReqId\": \"0\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobReqFwdCandidates({{ _.key_JobReqFwdCandidates }})'
+    method: MERGE
+    meta:
+      id: req_1e5f037a7829f86f91e5ba9f5ea749a0
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: candidateId (Edm.Int64), jobReqId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobReqFwdCandidates. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id014
+    body:
+      mimeType: application/json
+      text: "{\n  \"candidateId\": \"0\",\n  \"jobReqId\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_274959c62898d3ac1662f771fe30bc07
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: candidateId (Edm.Int64), jobReqId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobReqFwdCandidates. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id014
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobReqFwdCandidates\"\n    },\n    \"candidateId\"\
+        : \"0\",\n    \"jobReqId\": \"0\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobReqFwdCandidates({{ _.key_JobReqFwdCandidates }})'
+    method: DELETE
+    meta:
+      id: req_30629b90b673e98277665b1d212e543b
+      description: 'Exclui o registro identificado pela chave. Chaves: candidateId (Edm.Int64), jobReqId (Edm.Int64).
+        Execute Listar para preencher automaticamente key_JobReqFwdCandidates. Campos e permissoes podem variar
+        por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobRequisition
+  meta:
+    id: fld_1048e3529183b0f16022212001800010
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobRequisition'
+    method: POST
+    meta:
+      id: req_3a7568db8f104e51cda6bf485bc74a7f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: jobReqId (Edm.Int64). Execute Listar para preencher automaticamente key_JobRequisition.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id015
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"appTemplateId\": \"0\",\n  \"country\": \"REPLACE_ME\",\n  \"statusSetId\": \"0\",\n  \"templateId\"\
+        : \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobRequisition({{ _.key_JobRequisition }})'
+    method: MERGE
+    meta:
+      id: req_143891d5f50ee33e9979fb9df5da292b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: jobReqId (Edm.Int64). Execute Listar para preencher automaticamente key_JobRequisition.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id015
+    body:
+      mimeType: application/json
+      text: "{\n  \"jobReqId\": \"0\",\n  \"appTemplateId\": \"0\",\n  \"country\": \"REPLACE_ME\",\n  \"statusSetId\"\
+        : \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_739c55f3f31fe92e5ffe82cc95ef54c2
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: jobReqId (Edm.Int64). Execute Listar para preencher automaticamente key_JobRequisition.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id015
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobRequisition\"\n    },\n    \"jobReqId\": \"0\",\n\
+        \    \"appTemplateId\": \"0\",\n    \"country\": \"REPLACE_ME\",\n    \"statusSetId\": \"0\",\n    \"templateId\"\
+        : \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobRequisition({{ _.key_JobRequisition }})'
+    method: DELETE
+    meta:
+      id: req_b2a05f2896e55c4e32c1e1030c695c60
+      description: 'Exclui o registro identificado pela chave. Chaves: jobReqId (Edm.Int64). Execute Listar para
+        preencher automaticamente key_JobRequisition. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobRequisitionPosting
+  meta:
+    id: fld_b281224b88bb1aaedf41a1336c90ac12
+    description: ''
+  children:
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobRequisitionPosting({{ _.key_JobRequisitionPosting }})'
+    method: MERGE
+    meta:
+      id: req_4db54fac45da898863ff134336e75a07
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: jobPostingId (Edm.Int64), jobReqId (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobRequisitionPosting. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters:
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"jobPostingId\": \"0\",\n  \"jobReqId\": \"0\"\n}"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobRequisitionPosting({{ _.key_JobRequisitionPosting }})'
+    method: DELETE
+    meta:
+      id: req_1b0b77d40429e5a4af62fbd5aeacbeb1
+      description: 'Exclui o registro identificado pela chave. Chaves: jobPostingId (Edm.Int64), jobReqId (Edm.Int64).
+        Execute Listar para preencher automaticamente key_JobRequisitionPosting. Campos e permissoes podem variar
+        por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: OfferLetter
+  meta:
+    id: fld_848ac7cf45d1f4dc50d185ab8b85b3be
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/OfferLetter'
+    method: POST
+    meta:
+      id: req_171038c32595bc34d34a1b8e38cd96b8
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: offerLetterId (Edm.Int64). Execute Listar para preencher automaticamente key_OfferLetter.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id016
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"applicationId\": \"0\",\n  \"offerLetterId\": \"0\",\n  \"sendMode\": \"REPLACE_ME\",\n  \"\
+        templateId\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_48b14f6f5887f036fbcb552b8ae6ac34
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: offerLetterId (Edm.Int64). Execute Listar para preencher automaticamente key_OfferLetter.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id016
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"OfferLetter\"\n    },\n    \"offerLetterId\": \"0\"\
+        \n  }\n]"
+environments:
+  name: Base Environment
+  meta:
+    id: env_e49e7306d959603e37e397451b6e6e39
+  data:
+    next_page_url: ''
+    key_Candidate: candidateId=0L
+    key_CandidateLight: candidateId=0L
+    key_CandidateTags: tagId=0L
+    key_InterviewIndividualAssessment: interviewIndividualAssessmentId=0L
+    key_InterviewOverallAssessment: interviewOverallAssessmentId=0L
+    key_InterviewQuestionEntity: externalCode='REPLACE_ME'
+    key_JobApplication: applicationId=0L
+    key_JobApplicationInterview: applicationInterviewId=0L
+    key_JobApplicationQuestionResponse: applicationId=0L,order=0L
+    key_JobOffer: offerApprovalId=0L
+    key_JobReqFwdCandidates: candidateId=0L,jobReqId=0L
+    key_JobRequisition: jobReqId=0L
+    key_JobRequisitionPosting: jobPostingId=0L,jobReqId=0L
+    key_OfferLetter: offerLetterId=0L

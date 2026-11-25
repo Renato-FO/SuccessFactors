@@ -1,0 +1,657 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Onboarding | Escrita 01
+meta:
+  id: wrk_81431069f8b9736cd2c2dc0ac7628965
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_311ab518928de8fa2d403a3a9983dc45
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_fac51c04a40bb394f7c7fde81063066f
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_ad0949107c6c77a59b96874f01988e32
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_eff57551ab5ab1c1acbb75a1e585753c
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_1d8b4ee910511322b201bab717e46a59
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: ComplianceDocumentFlow
+  meta:
+    id: fld_d8c135272e40d12eea5f1d3815ae4772
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow'
+    method: POST
+    meta:
+      id: req_6148e309a931d2fa852f7908123bae66
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: documentFlowCode (Edm.String). Execute Listar para preencher automaticamente key_ComplianceDocumentFlow.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id004
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"documentFlowCode\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow({{ _.key_ComplianceDocumentFlow }})'
+    method: MERGE
+    meta:
+      id: req_0f4fd1a24ac61067e9789a867597d720
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: documentFlowCode (Edm.String). Execute Listar para preencher automaticamente key_ComplianceDocumentFlow.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "{\n  \"documentFlowCode\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_a1a2c6c2f84075e3fdd5594aa126dbc4
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: documentFlowCode (Edm.String). Execute Listar para preencher automaticamente key_ComplianceDocumentFlow.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"ComplianceDocumentFlow\"\n    },\n    \"documentFlowCode\"\
+        : \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/ComplianceDocumentFlow({{ _.key_ComplianceDocumentFlow }})'
+    method: DELETE
+    meta:
+      id: req_06fc83f661f7fb89dcab5006b3124ccc
+      description: 'Exclui o registro identificado pela chave. Chaves: documentFlowCode (Edm.String). Execute Listar
+        para preencher automaticamente key_ComplianceDocumentFlow. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: ONB2BuddyActivity
+  meta:
+    id: fld_a680ddfa89b9d021f3ac2a70cb0508ab
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity'
+    method: POST
+    meta:
+      id: req_e7efd1a1cca5a366e04f2f752d4c2936
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente key_ONB2BuddyActivity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id005
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"activityId\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity({{ _.key_ONB2BuddyActivity }})'
+    method: MERGE
+    meta:
+      id: req_501a5f5ed97a1d4ba7912c1dc53c6d17
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente key_ONB2BuddyActivity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "{\n  \"activityId\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_aec3399289bf5b646ec5d3f570abbde8
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: activityId (Edm.String). Execute Listar para preencher automaticamente key_ONB2BuddyActivity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"ONB2BuddyActivity\"\n    },\n    \"activityId\": \"\
+        REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/ONB2BuddyActivity({{ _.key_ONB2BuddyActivity }})'
+    method: DELETE
+    meta:
+      id: req_11dd2b4cf4e471ef3f136074129c5282
+      description: 'Exclui o registro identificado pela chave. Chaves: activityId (Edm.String). Execute Listar para
+        preencher automaticamente key_ONB2BuddyActivity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: ONB2EquipmentType
+  meta:
+    id: fld_1699a333e1c01218dc500e4944a81a07
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType'
+    method: POST
+    meta:
+      id: req_ed93635753b2a232ed58ba54ce83ebbd
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: code (Edm.String). Execute Listar para preencher automaticamente key_ONB2EquipmentType.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id006
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"code\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType({{ _.key_ONB2EquipmentType }})'
+    method: MERGE
+    meta:
+      id: req_ebac7f8589a7d2f0ac41f3e6c90bd846
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: code (Edm.String). Execute Listar para preencher automaticamente key_ONB2EquipmentType.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "{\n  \"code\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_4d896c46cf7b0041d10f148b682f0210
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: code (Edm.String). Execute Listar para preencher automaticamente key_ONB2EquipmentType.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"ONB2EquipmentType\"\n    },\n    \"code\": \"REPLACE_ME\"\
+        \n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/ONB2EquipmentType({{ _.key_ONB2EquipmentType }})'
+    method: DELETE
+    meta:
+      id: req_54ee071f79efc83b2d39737108b05787
+      description: 'Exclui o registro identificado pela chave. Chaves: code (Edm.String). Execute Listar para preencher
+        automaticamente key_ONB2EquipmentType. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: ONB2Process
+  meta:
+    id: fld_a58ad76fe08884bef14fd8241ec2f40c
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/ONB2Process'
+    method: POST
+    meta:
+      id: req_47f8765f08f818564c792dbb20d66c1a
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente key_ONB2Process.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id007
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"processId\": \"REPLACE_ME\",\n  \"processType\": \"REPLACE_ME\",\n  \"targetDate\": \"/Date(946684800000)/\"\
+        \n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})'
+    method: MERGE
+    meta:
+      id: req_72855c97811aa412c88a4f2d10af304e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente key_ONB2Process.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id007
+    body:
+      mimeType: application/json
+      text: "{\n  \"processId\": \"REPLACE_ME\",\n  \"processType\": \"REPLACE_ME\",\n  \"targetDate\": \"/Date(946684800000)/\"\
+        \n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_fdcf6008f3ac9beb80f2c5eea855494e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: processId (Edm.String). Execute Listar para preencher automaticamente key_ONB2Process.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id007
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"ONB2Process\"\n    },\n    \"processId\": \"REPLACE_ME\"\
+        ,\n    \"processType\": \"REPLACE_ME\",\n    \"targetDate\": \"/Date(946684800000)/\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/ONB2Process({{ _.key_ONB2Process }})'
+    method: DELETE
+    meta:
+      id: req_32ec786158dc261e7289ef649b5d4413
+      description: 'Exclui o registro identificado pela chave. Chaves: processId (Edm.String). Execute Listar para
+        preencher automaticamente key_ONB2Process. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: ONB2ProcessTask
+  meta:
+    id: fld_d3579e6f3e579c8fe66f51fa27932816
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask'
+    method: POST
+    meta:
+      id: req_2c445cafa82a01da72eae0341f59b1d7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: ONB2Process_processId (Edm.String), taskId (Edm.String). Execute Listar para preencher
+        automaticamente key_ONB2ProcessTask. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id008
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"ONB2Process_processId\": \"REPLACE_ME\",\n  \"taskId\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask({{ _.key_ONB2ProcessTask }})'
+    method: MERGE
+    meta:
+      id: req_54e31e5216339239b1bfce14acf03538
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: ONB2Process_processId (Edm.String), taskId (Edm.String). Execute Listar para preencher
+        automaticamente key_ONB2ProcessTask. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id008
+    body:
+      mimeType: application/json
+      text: "{\n  \"ONB2Process_processId\": \"REPLACE_ME\",\n  \"taskId\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_24412542da6296621e9a47d9c2b60fa5
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: ONB2Process_processId (Edm.String), taskId (Edm.String). Execute Listar para preencher
+        automaticamente key_ONB2ProcessTask. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id008
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"ONB2ProcessTask\"\n    },\n    \"ONB2Process_processId\"\
+        : \"REPLACE_ME\",\n    \"taskId\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTask({{ _.key_ONB2ProcessTask }})'
+    method: DELETE
+    meta:
+      id: req_99d8bd986d2d1ca7623391c67e47dd83
+      description: 'Exclui o registro identificado pela chave. Chaves: ONB2Process_processId (Edm.String), taskId
+        (Edm.String). Execute Listar para preencher automaticamente key_ONB2ProcessTask. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: ONB2ProcessTrigger
+  meta:
+    id: fld_12d13999921531238bcd33921545a449
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger'
+    method: POST
+    meta:
+      id: req_f4016172a8f0b10f4255a01a5528f4e9
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente key_ONB2ProcessTrigger.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id009
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"triggerId\": \"REPLACE_ME\",\n  \"triggerStatus\": \"REPLACE_ME\",\n  \"triggerType\": \"REPLACE_ME\"\
+        \n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger({{ _.key_ONB2ProcessTrigger }})'
+    method: MERGE
+    meta:
+      id: req_285e88de39e3756eb72601de7c19ee40
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente key_ONB2ProcessTrigger.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id009
+    body:
+      mimeType: application/json
+      text: "{\n  \"triggerId\": \"REPLACE_ME\",\n  \"triggerStatus\": \"REPLACE_ME\",\n  \"triggerType\": \"REPLACE_ME\"\
+        \n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_16bf6369d9542c99310a52b47ce4081b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: triggerId (Edm.String). Execute Listar para preencher automaticamente key_ONB2ProcessTrigger.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id009
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"ONB2ProcessTrigger\"\n    },\n    \"triggerId\": \"\
+        REPLACE_ME\",\n    \"triggerStatus\": \"REPLACE_ME\",\n    \"triggerType\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/ONB2ProcessTrigger({{ _.key_ONB2ProcessTrigger }})'
+    method: DELETE
+    meta:
+      id: req_c237b7360ac36c76122598245f7d6fdc
+      description: 'Exclui o registro identificado pela chave. Chaves: triggerId (Edm.String). Execute Listar para
+        preencher automaticamente key_ONB2ProcessTrigger. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+environments:
+  name: Base Environment
+  meta:
+    id: env_81431069f8b9736cd2c2dc0ac7628965
+  data:
+    next_page_url: ''
+    key_ComplianceDocumentFlow: documentFlowCode='REPLACE_ME'
+    key_ONB2BuddyActivity: activityId='REPLACE_ME'
+    key_ONB2EquipmentType: code='REPLACE_ME'
+    key_ONB2Process: processId='REPLACE_ME'
+    key_ONB2ProcessTask: ONB2Process_processId='REPLACE_ME',taskId='REPLACE_ME'
+    key_ONB2ProcessTrigger: triggerId='REPLACE_ME'

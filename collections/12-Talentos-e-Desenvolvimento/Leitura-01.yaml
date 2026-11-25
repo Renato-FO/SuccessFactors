@@ -1,0 +1,1290 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Talentos-e-Desenvolvimento | Leitura 01
+meta:
+  id: wrk_bdc6da259e5175e0f6953f89d6c1d8bf
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_55f5a66547ba8df5ff7ff63774cc9673
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_5632825772185915e1cfbc1adb2035c7
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_4e149acb3a3aa3f63d64c6df7b90600e
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_4349fbc4b5422dad70262997f6c8dcaa
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_6a2fe29144f47b94a2c59ba875278638
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: MentoringProgram
+  meta:
+    id: fld_b222f035a70d982fb3302b9acfbfcd50
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgram'
+    method: GET
+    meta:
+      id: req_f6fb2f1a0a0a4bb03334d870a55423e9
+      description: 'Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgram.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id004
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: externalId,actualMatchingDate,actualMenteeSignupDate,actualMentorSignupDate,actualStartDate,associatedDevgoalTemplateId,autoDeclineRequestEnabled,autoDeclineTimeoutDays,completedDate
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"externalId\": \"Edm.Int64\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_MentoringProgram', Object.entries(types).map(([k,t]) =>\
+        \ k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/MentoringProgram'
+    method: GET
+    meta:
+      id: req_fda6e4e81c31e4c2c98746bc256ae144
+      description: 'Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgram.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: externalId,actualMatchingDate,actualMenteeSignupDate,actualMentorSignupDate,actualStartDate,associatedDevgoalTemplateId,autoDeclineRequestEnabled,autoDeclineTimeoutDays,completedDate
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/MentoringProgram({{ _.key_MentoringProgram }})'
+    method: GET
+    meta:
+      id: req_86ca2707ca0e5998219f9eb794a6207b
+      description: 'Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgram.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgram'
+    method: GET
+    meta:
+      id: req_08e623a0e9d7d630ce975fd7989bfa25
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: externalId eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgram/$count'
+    method: GET
+    meta:
+      id: req_9ea5542710ed70d92af2363bce60c408
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: 06 — Data de referencia
+    url: '{{ _.base_url }}/odata/v2/MentoringProgram'
+    method: GET
+    meta:
+      id: req_8806f7fd1f21ea7e88addae9431e2b81
+      description: Consulta temporal; ajuste as_of_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: asOfDate
+      value: '{{ _.as_of_date }}'
+      disabled: false
+  - name: 07 — Historico por periodo
+    url: '{{ _.base_url }}/odata/v2/MentoringProgram'
+    method: GET
+    meta:
+      id: req_a534a91e8b93d8bb6ad4b6334526248b
+      description: Consulta temporal; ajuste from_date e to_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: fromDate
+      value: '{{ _.from_date }}'
+      disabled: false
+    - name: toDate
+      value: '{{ _.to_date }}'
+      disabled: false
+  - name: Relacionamentos
+    meta:
+      id: fld_948f14978dbd1670342eabc6722a4567
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgram({{ _.key_MentoringProgram }})/createdByNav'
+      method: GET
+      meta:
+        id: req_434210cb5519ea766272251b2a6e1b09
+        description: 'Destino: User. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_MentoringProgram. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgram'
+      method: GET
+      meta:
+        id: req_9a03c947ecbf9225acaad4625f538336
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgram({{ _.key_MentoringProgram }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_00adaf100425a765bc05829cd809b249
+        description: 'Destino: User. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_MentoringProgram. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgram'
+      method: GET
+      meta:
+        id: req_acc89ecd2a1ed2ddd569b447798684c4
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgram({{ _.key_MentoringProgram }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_d9870022007fcdb4531b4a0c3697a13c
+        description: 'Destino: WfRequest. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_MentoringProgram. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgram'
+      method: GET
+      meta:
+        id: req_bb6855015b69612313f91bb321190d3c
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+- name: MentoringProgramMatchedParticipant
+  meta:
+    id: fld_a3ea543d2f6e3ff6b0782726c8c67fe3
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant'
+    method: GET
+    meta:
+      id: req_e348a105c998629dfefa041ca3f07f47
+      description: 'Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgramMatchedParticipant.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id005
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: externalId,createdBy,createdDate,createdDateTime,lastModifiedBy,lastModifiedDate,lastModifiedDateTime,lastModifiedDateWithTZ
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"externalId\": \"Edm.Int64\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_MentoringProgramMatchedParticipant', Object.entries(types).map(([k,t])\
+        \ => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant'
+    method: GET
+    meta:
+      id: req_c9dc2dab1cbe958173c8f83490c8773d
+      description: 'Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgramMatchedParticipant.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: externalId,createdBy,createdDate,createdDateTime,lastModifiedBy,lastModifiedDate,lastModifiedDateTime,lastModifiedDateWithTZ
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant({{ _.key_MentoringProgramMatchedParticipant
+      }})'
+    method: GET
+    meta:
+      id: req_e1b7fbabf5f2eb6e73974c0552bf339a
+      description: 'Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgramMatchedParticipant.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant'
+    method: GET
+    meta:
+      id: req_6b084b7512ed9e449b155ce86aaf860a
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: externalId eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant/$count'
+    method: GET
+    meta:
+      id: req_7d878884213d5290b0d6b3a6e2bcb4cd
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_373c1075dfe6502dfb94bb1fee45b223
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant({{ _.key_MentoringProgramMatchedParticipant
+        }})/createdByNav'
+      method: GET
+      meta:
+        id: req_a867cf5bf80e3abb181b2c6cca25d761
+        description: 'Destino: User. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_MentoringProgramMatchedParticipant. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant'
+      method: GET
+      meta:
+        id: req_0d93259559a0adcb2991c35a93603648
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant({{ _.key_MentoringProgramMatchedParticipant
+        }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_f90197e88d1248ea87d297eac9df9d29
+        description: 'Destino: User. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_MentoringProgramMatchedParticipant. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant'
+      method: GET
+      meta:
+        id: req_7c9aa39f8a89228807d895c01a40636d
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — menteeNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant({{ _.key_MentoringProgramMatchedParticipant
+        }})/menteeNav'
+      method: GET
+      meta:
+        id: req_53f24a7fed48acfbfd774041d18c9125
+        description: 'Destino: User. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_MentoringProgramMatchedParticipant. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — menteeNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant'
+      method: GET
+      meta:
+        id: req_4202bb6672adf986f69d84e068f16d30
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: menteeNav
+        disabled: false
+    - name: Navegar — mentorNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant({{ _.key_MentoringProgramMatchedParticipant
+        }})/mentorNav'
+      method: GET
+      meta:
+        id: req_c63f558e02e1c365739126e3ef39cd58
+        description: 'Destino: User. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_MentoringProgramMatchedParticipant. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — mentorNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant'
+      method: GET
+      meta:
+        id: req_7318b22d4d3f945bd53d07502b46d23b
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: mentorNav
+        disabled: false
+    - name: Navegar — passiveUserNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant({{ _.key_MentoringProgramMatchedParticipant
+        }})/passiveUserNav'
+      method: GET
+      meta:
+        id: req_fdb03d025f43910c8bd3d23f8b6a0f32
+        description: 'Destino: User. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_MentoringProgramMatchedParticipant. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — passiveUserNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant'
+      method: GET
+      meta:
+        id: req_2238ff94b48e7782bb755a99fe115cff
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: passiveUserNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant({{ _.key_MentoringProgramMatchedParticipant
+        }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_a5670879e1677b69dcc7c1b4ebe32254
+        description: 'Destino: WfRequest. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_MentoringProgramMatchedParticipant. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant'
+      method: GET
+      meta:
+        id: req_84d2c8674b1e47836c5e49f5753c73cf
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+- name: MentoringProgramParticipantInfo
+  meta:
+    id: fld_351461dd23951ffe9c2983d8df372056
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramParticipantInfo'
+    method: GET
+    meta:
+      id: req_016afb6660ef0af64a4cc1279b0b5eec
+      description: 'Chaves: mentoringProgramId (Edm.String), roleType (Edm.String), uniqueIdentifier (Edm.String).
+        Execute Listar para preencher automaticamente key_MentoringProgramParticipantInfo. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id006
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: mentoringProgramId,roleType,uniqueIdentifier
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"mentoringProgramId\": \"\
+        Edm.String\", \"roleType\": \"Edm.String\", \"uniqueIdentifier\": \"Edm.String\"};\nif (first && Object.keys(types).length\
+        \ && Object.keys(types).every(k => first[k] !== undefined && first[k] !== null)) {\n  const literal = (type,\
+        \ value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"'\", \"''\") + \"\
+        '\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\\
+        /Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z',\
+        \ type === 'Edm.DateTime' ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset')\
+        \ + \"'\" + iso + \"'\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return\
+        \ String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n\
+        \  };\n  insomnia.environment.set('key_MentoringProgramParticipantInfo', Object.entries(types).map(([k,t])\
+        \ => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramParticipantInfo'
+    method: GET
+    meta:
+      id: req_90bcc64820248c8e0b36b98f0d7baa26
+      description: 'Chaves: mentoringProgramId (Edm.String), roleType (Edm.String), uniqueIdentifier (Edm.String).
+        Execute Listar para preencher automaticamente key_MentoringProgramParticipantInfo. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: mentoringProgramId,roleType,uniqueIdentifier
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramParticipantInfo({{ _.key_MentoringProgramParticipantInfo }})'
+    method: GET
+    meta:
+      id: req_6fd064e3dd28e74c06902542b9fbdc1f
+      description: 'Chaves: mentoringProgramId (Edm.String), roleType (Edm.String), uniqueIdentifier (Edm.String).
+        Execute Listar para preencher automaticamente key_MentoringProgramParticipantInfo. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramParticipantInfo'
+    method: GET
+    meta:
+      id: req_c8b8271db9749a519983cca7c152c8db
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: mentoringProgramId eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramParticipantInfo/$count'
+    method: GET
+    meta:
+      id: req_79e9a60b228f999f5003edec08985613
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_09c3a320d6471ab0b8c6d67d85745c79
+      description: ''
+    children:
+    - name: Navegar — MentoringProgramParticipantInfo_of_User
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramParticipantInfo({{ _.key_MentoringProgramParticipantInfo }})/MentoringProgramParticipantInfo_of_User'
+      method: GET
+      meta:
+        id: req_db1513181a59fa4242f6a9337497c7a1
+        description: 'Destino: User. Chaves: mentoringProgramId (Edm.String), roleType (Edm.String), uniqueIdentifier
+          (Edm.String). Execute Listar para preencher automaticamente key_MentoringProgramParticipantInfo. Campos
+          e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — MentoringProgramParticipantInfo_of_User
+      url: '{{ _.base_url }}/odata/v2/MentoringProgramParticipantInfo'
+      method: GET
+      meta:
+        id: req_e7ebe7b585ba80c5349087c347ad365d
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: MentoringProgramParticipantInfo_of_User
+        disabled: false
+- name: TalentPool
+  meta:
+    id: fld_a83ad0601d8ffc68515d70201bb38dea
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/TalentPool'
+    method: GET
+    meta:
+      id: req_737f6ac58017b55a87d882f7131e8d84
+      description: 'Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar para preencher
+        automaticamente key_TalentPool. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id007
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: code,effectiveStartDate,createdBy,createdDateTime,description_defaultValue,description_en_DEBUG,description_en_US,description_localized,description_pt_BR
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"code\": \"Edm.String\", \"\
+        effectiveStartDate\": \"Edm.DateTime\"};\nif (first && Object.keys(types).length && Object.keys(types).every(k\
+        \ => first[k] !== undefined && first[k] !== null)) {\n  const literal = (type, value) => {\n    if (type\
+        \ === 'Edm.String') return \"'\" + String(value).replaceAll(\"'\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime'\
+        \ || type === 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\\
+        d{4})?\\)\\/$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z', type\
+        \ === 'Edm.DateTime' ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset')\
+        \ + \"'\" + iso + \"'\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return\
+        \ String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n\
+        \  };\n  insomnia.environment.set('key_TalentPool', Object.entries(types).map(([k,t]) => k + '=' + literal(t,first[k])).join(','));\n\
+        }\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url', data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/TalentPool'
+    method: GET
+    meta:
+      id: req_eef8bbf72cbc350f26377041ab5090f0
+      description: 'Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar para preencher
+        automaticamente key_TalentPool. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: code,effectiveStartDate,createdBy,createdDateTime,description_defaultValue,description_en_DEBUG,description_en_US,description_localized,description_pt_BR
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/TalentPool({{ _.key_TalentPool }})'
+    method: GET
+    meta:
+      id: req_c49471615f4f5711c638f7db35cdbabd
+      description: 'Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar para preencher
+        automaticamente key_TalentPool. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/TalentPool'
+    method: GET
+    meta:
+      id: req_5d5b0ce48742dbf7a11cb2cc840d7d5c
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: code eq 'REPLACE_ME' and effectiveStartDate eq datetime'2000-01-01T00:00:00'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/TalentPool/$count'
+    method: GET
+    meta:
+      id: req_d11010d7d2aa1beee334954dbedc759a
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: 06 — Data de referencia
+    url: '{{ _.base_url }}/odata/v2/TalentPool'
+    method: GET
+    meta:
+      id: req_316c0bb38c43583cf9af9d310d472cc6
+      description: Consulta temporal; ajuste as_of_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: asOfDate
+      value: '{{ _.as_of_date }}'
+      disabled: false
+  - name: 07 — Historico por periodo
+    url: '{{ _.base_url }}/odata/v2/TalentPool'
+    method: GET
+    meta:
+      id: req_24b2354c02518073aee89d25275927ea
+      description: Consulta temporal; ajuste from_date e to_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: fromDate
+      value: '{{ _.from_date }}'
+      disabled: false
+    - name: toDate
+      value: '{{ _.to_date }}'
+      disabled: false
+  - name: Relacionamentos
+    meta:
+      id: fld_5fdbd1c3a7de5e7e5869194b707138b2
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/TalentPool({{ _.key_TalentPool }})/createdByNav'
+      method: GET
+      meta:
+        id: req_c499bba6b8b62ff3a55ce68bc04ae4d7
+        description: 'Destino: User. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar
+          para preencher automaticamente key_TalentPool. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/TalentPool'
+      method: GET
+      meta:
+        id: req_204d901aaa4148f896e46b27e1f6bf74
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/TalentPool({{ _.key_TalentPool }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_af0ba302c965412f97949577f02a4246
+        description: 'Destino: User. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar
+          para preencher automaticamente key_TalentPool. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/TalentPool'
+      method: GET
+      meta:
+        id: req_b52a4bb6de0caf1933a3c0bb866c3c3c
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — ownerNav
+      url: '{{ _.base_url }}/odata/v2/TalentPool({{ _.key_TalentPool }})/ownerNav'
+      method: GET
+      meta:
+        id: req_d95e8974220e5c6fbe820a172b70171a
+        description: 'Destino: User. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar
+          para preencher automaticamente key_TalentPool. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+    - name: Expandir — ownerNav
+      url: '{{ _.base_url }}/odata/v2/TalentPool'
+      method: GET
+      meta:
+        id: req_39659daa0cd6753f2ff1e72b360d235f
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: ownerNav
+        disabled: false
+    - name: Navegar — typeNav
+      url: '{{ _.base_url }}/odata/v2/TalentPool({{ _.key_TalentPool }})/typeNav'
+      method: GET
+      meta:
+        id: req_8330f2a81a0ccc924f5e6d29dbd1d0d7
+        description: 'Destino: PickListValueV2. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_TalentPool. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+    - name: Expandir — typeNav
+      url: '{{ _.base_url }}/odata/v2/TalentPool'
+      method: GET
+      meta:
+        id: req_f4c8ea1af4de160a47d08315a33223be
+        description: 'Destino: PickListValueV2. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: typeNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/TalentPool({{ _.key_TalentPool }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_3e746319425c08ec057d20d5a101e949
+        description: 'Destino: WfRequest. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_TalentPool. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/TalentPool'
+      method: GET
+      meta:
+        id: req_52ffeba8c4bd35fcd12b5486337a211e
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+environments:
+  name: Base Environment
+  meta:
+    id: env_bdc6da259e5175e0f6953f89d6c1d8bf
+  data:
+    next_page_url: ''
+    key_MentoringProgram: externalId=0L
+    key_MentoringProgramMatchedParticipant: externalId=0L
+    key_MentoringProgramParticipantInfo: mentoringProgramId='REPLACE_ME',roleType='REPLACE_ME',uniqueIdentifier='REPLACE_ME'
+    key_TalentPool: code='REPLACE_ME',effectiveStartDate=datetime'2000-01-01T00:00:00'

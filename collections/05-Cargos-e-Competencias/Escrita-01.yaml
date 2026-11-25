@@ -1,0 +1,2656 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Cargos-e-Competencias | Escrita 01
+meta:
+  id: wrk_729c0866e6c6afe6ad2147c82d8dcef1
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_2f5868e6d32fe276dbca09776510019f
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_4d603b4a1983f0ce84e362e9b0613727
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_5add523bd674e6f0307b6d0877789f0e
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_530adb94bd34a84bb6e56cd4c61b942b
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_7e09315edf5979a9aad3f64c22914859
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: CertificationContent
+  meta:
+    id: fld_063a401707faf3f3362da2eec18fafe4
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/CertificationContent'
+    method: POST
+    meta:
+      id: req_0a138cd892ed501e96e4e68cec8e09d3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_CertificationContent. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id004
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobProfile_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"sectionId\"\
+        : \"REPLACE_ME\",\n  \"sectionType\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/CertificationContent({{ _.key_CertificationContent }})'
+    method: MERGE
+    meta:
+      id: req_5962dfb9ec526898bd70e1b6057982ac
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_CertificationContent. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobProfile_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"sectionId\"\
+        : \"REPLACE_ME\",\n  \"sectionType\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_57772cd4f9615e5727ff5d1a4931c53f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_CertificationContent. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"CertificationContent\"\n    },\n    \"JobProfile_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"REPLACE_ME\",\n    \"sectionId\": \"REPLACE_ME\",\n    \"sectionType\"\
+        : \"REPLACE_ME\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/CertificationContent({{ _.key_CertificationContent }})'
+    method: DELETE
+    meta:
+      id: req_7b5b452f5cd506d2a4fa04cdd69e7f37
+      description: 'Exclui o registro identificado pela chave. Chaves: JobProfile_externalCode (Edm.String), externalCode
+        (Edm.String). Execute Listar para preencher automaticamente key_CertificationContent. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: CertificationEntity
+  meta:
+    id: fld_d3e3f66d746b9029d7f1beca9af7f466
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/CertificationEntity'
+    method: POST
+    meta:
+      id: req_bbc46fc737685a6ca4867f0957b8d8a0
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_CertificationEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id005
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/CertificationEntity({{ _.key_CertificationEntity }})'
+    method: MERGE
+    meta:
+      id: req_12b84e4f8145e4139146a46593ae49f5
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_CertificationEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_65e2b512947ce4a6d9cb3c55a5cbe6b1
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_CertificationEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"CertificationEntity\"\n    },\n    \"externalCode\"\
+        : \"REPLACE_ME\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/CertificationEntity({{ _.key_CertificationEntity }})'
+    method: DELETE
+    meta:
+      id: req_1d12ac2084802cdb381d6a83e8501090
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_CertificationEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: CompetencyContent
+  meta:
+    id: fld_be72bfc92108fb10f6bd3753c00bfe8c
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/CompetencyContent'
+    method: POST
+    meta:
+      id: req_82ed64ec7c0d49cf0f2cca2eca085b81
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_CompetencyContent. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id006
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobProfile_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"sectionId\"\
+        : \"REPLACE_ME\",\n  \"sectionType\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/CompetencyContent({{ _.key_CompetencyContent }})'
+    method: MERGE
+    meta:
+      id: req_2887b644566f3cdd406779607ec54692
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_CompetencyContent. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobProfile_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"sectionId\"\
+        : \"REPLACE_ME\",\n  \"sectionType\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_43fe58bb0d1ba81ab9312ee5fe972121
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_CompetencyContent. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"CompetencyContent\"\n    },\n    \"JobProfile_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"REPLACE_ME\",\n    \"sectionId\": \"REPLACE_ME\",\n    \"sectionType\"\
+        : \"REPLACE_ME\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/CompetencyContent({{ _.key_CompetencyContent }})'
+    method: DELETE
+    meta:
+      id: req_1796c762e9ae454327f7bbeed61952a1
+      description: 'Exclui o registro identificado pela chave. Chaves: JobProfile_externalCode (Edm.String), externalCode
+        (Edm.String). Execute Listar para preencher automaticamente key_CompetencyContent. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: CompetencyEntity
+  meta:
+    id: fld_5d9947d7bbbc8107e9c91dcb51215ab4
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/CompetencyEntity'
+    method: POST
+    meta:
+      id: req_b51307bb935763d30f5f4fcbe4723444
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_CompetencyEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id007
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/CompetencyEntity({{ _.key_CompetencyEntity }})'
+    method: MERGE
+    meta:
+      id: req_2a6ab6c93df221f2b4f3d0822fd9974f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_CompetencyEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id007
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_4c8fac2ed9129cfdf3889e248cd13966
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_CompetencyEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id007
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"CompetencyEntity\"\n    },\n    \"externalCode\": \"\
+        REPLACE_ME\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/CompetencyEntity({{ _.key_CompetencyEntity }})'
+    method: DELETE
+    meta:
+      id: req_f4f4fed6550fb1051fa2cffecf2b3ec8
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_CompetencyEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EducationDegreeEntity
+  meta:
+    id: fld_084e44142c50099f5016d72431c87d95
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EducationDegreeEntity'
+    method: POST
+    meta:
+      id: req_c8ef0c237aace5819493666cbb9191a4
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_EducationDegreeEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id008
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EducationDegreeEntity({{ _.key_EducationDegreeEntity }})'
+    method: MERGE
+    meta:
+      id: req_4e0ba216e33811e82a3bafe968c01958
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_EducationDegreeEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id008
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_21e8cafc918c6b96f908c1145429a236
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_EducationDegreeEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id008
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EducationDegreeEntity\"\n    },\n    \"externalCode\"\
+        : \"REPLACE_ME\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EducationDegreeEntity({{ _.key_EducationDegreeEntity }})'
+    method: DELETE
+    meta:
+      id: req_445c2d6b1ad4d053e74c67e710bff8cc
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_EducationDegreeEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EducationMajorEntity
+  meta:
+    id: fld_afcf10e9b6177089e9a9806522322812
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EducationMajorEntity'
+    method: POST
+    meta:
+      id: req_26cfec0f3969dcf9bf59990a0946fb35
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_EducationMajorEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id009
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EducationMajorEntity({{ _.key_EducationMajorEntity }})'
+    method: MERGE
+    meta:
+      id: req_7e2e8e6e987ed42dfdb4f0c58d41787f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_EducationMajorEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id009
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_712ede7337187ea428c56294e1925605
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_EducationMajorEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id009
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EducationMajorEntity\"\n    },\n    \"externalCode\"\
+        : \"REPLACE_ME\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EducationMajorEntity({{ _.key_EducationMajorEntity }})'
+    method: DELETE
+    meta:
+      id: req_f3063baf64985338bc4c61b4d1456253
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_EducationMajorEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: FamilyCompetencyMappingEntity
+  meta:
+    id: fld_ff7b106a06adf0d72551b8f596389421
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/FamilyCompetencyMappingEntity'
+    method: POST
+    meta:
+      id: req_ced86591de2f692f811072bd3906a471
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: FamilyEntity_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_FamilyCompetencyMappingEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id010
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"FamilyEntity_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\"\
+        : \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/FamilyCompetencyMappingEntity({{ _.key_FamilyCompetencyMappingEntity }})'
+    method: MERGE
+    meta:
+      id: req_8b0278cfec9e10a4eb47d62b33c1b357
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: FamilyEntity_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_FamilyCompetencyMappingEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id010
+    body:
+      mimeType: application/json
+      text: "{\n  \"FamilyEntity_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\"\
+        : \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_6353e4e6b0b011f800500950eb3d3a02
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: FamilyEntity_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_FamilyCompetencyMappingEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id010
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"FamilyCompetencyMappingEntity\"\n    },\n    \"FamilyEntity_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"REPLACE_ME\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/FamilyCompetencyMappingEntity({{ _.key_FamilyCompetencyMappingEntity }})'
+    method: DELETE
+    meta:
+      id: req_bb06bdcf56e67b7e05a1f7a0bfca71cd
+      description: 'Exclui o registro identificado pela chave. Chaves: FamilyEntity_externalCode (Edm.String), externalCode
+        (Edm.String). Execute Listar para preencher automaticamente key_FamilyCompetencyMappingEntity. Campos e
+        permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationAUS
+  meta:
+    id: fld_45a816130d1811042c7501fe6ab5e39a
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationAUS'
+    method: POST
+    meta:
+      id: req_59b899c735f5c3453fea4e39a29b93d2
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationAUS. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id011
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationAUS({{ _.key_JobClassificationAUS }})'
+    method: MERGE
+    meta:
+      id: req_77667a5459cef0b00a52d1d240db6feb
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationAUS. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id011
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_e19408b27818c0bfd669b8ad327140a9
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationAUS. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id011
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationAUS\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationAUS({{ _.key_JobClassificationAUS }})'
+    method: DELETE
+    meta:
+      id: req_aa6eb55e27c4b29a282c7738f08498bf
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationAUS. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationBGR
+  meta:
+    id: fld_0362e401f0a866afca717c1b6cbf8b5f
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationBGR'
+    method: POST
+    meta:
+      id: req_0d7ccde31e7f5ff76b8fb53bef8af3bf
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationBGR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id012
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationBGR({{ _.key_JobClassificationBGR }})'
+    method: MERGE
+    meta:
+      id: req_544b62e827a47ff917fdb64345bcde8a
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationBGR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id012
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_339a9db1bdca26090282a3c5f5f68433
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationBGR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id012
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationBGR\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationBGR({{ _.key_JobClassificationBGR }})'
+    method: DELETE
+    meta:
+      id: req_13452cc225fde85fc1e13d64260e232c
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationBGR. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationBOL
+  meta:
+    id: fld_7088b71c521d355ecb5faea79ca0dc0b
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationBOL'
+    method: POST
+    meta:
+      id: req_1f6b2916c143438ec3f853ff56fa4bde
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationBOL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id013
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationBOL({{ _.key_JobClassificationBOL }})'
+    method: MERGE
+    meta:
+      id: req_0eb0e49df9b4f7d643c90c3504c15076
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationBOL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id013
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_e4752258f2f78ebf7a8251a956099c3b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationBOL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id013
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationBOL\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationBOL({{ _.key_JobClassificationBOL }})'
+    method: DELETE
+    meta:
+      id: req_ba41a78c4eceb1d089ed2dc4398afd35
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationBOL. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationBRA
+  meta:
+    id: fld_a3fe451397bb26155a865f324b3ef5d6
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationBRA'
+    method: POST
+    meta:
+      id: req_617f4fe5f6a0f0f2124e68e1dec5d20f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationBRA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id014
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationBRA({{ _.key_JobClassificationBRA }})'
+    method: MERGE
+    meta:
+      id: req_fd7581bf6ce83c7cdc6b36de9caa4360
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationBRA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id014
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_16e4cd66ed4e81ce2dc3d318d748536f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationBRA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id014
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationBRA\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationBRA({{ _.key_JobClassificationBRA }})'
+    method: DELETE
+    meta:
+      id: req_f96980aa7711665d5f5aad5411be6e54
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationBRA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationCAN
+  meta:
+    id: fld_e5ef26d82ab8a3751aa6113c889339d3
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationCAN'
+    method: POST
+    meta:
+      id: req_c79004165711fddfdcfefc2e03914d3f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationCAN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id015
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationCAN({{ _.key_JobClassificationCAN }})'
+    method: MERGE
+    meta:
+      id: req_07ace537555889b3adee72e41a7783b9
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationCAN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id015
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_609fa36ae02144a2837c5d4f6d0ebe21
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationCAN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id015
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationCAN\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationCAN({{ _.key_JobClassificationCAN }})'
+    method: DELETE
+    meta:
+      id: req_a00ea76d12e5fcae2e425a16f44f3cf4
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationCAN. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationCHL
+  meta:
+    id: fld_9f29113a607c89ffdd06fc6c31e43294
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationCHL'
+    method: POST
+    meta:
+      id: req_72e9b907e88ad4d693c03c2d81f0e745
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationCHL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id016
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationCHL({{ _.key_JobClassificationCHL }})'
+    method: MERGE
+    meta:
+      id: req_bff61cd708ed7817da8707397ddacbdc
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationCHL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id016
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_b3d0c9950dbfeb519b5dd466fe45aa4d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationCHL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id016
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationCHL\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationCHL({{ _.key_JobClassificationCHL }})'
+    method: DELETE
+    meta:
+      id: req_eca85a774aed2b18b5f8694055af51e7
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationCHL. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationFRA
+  meta:
+    id: fld_c208e9207ee7f24ccceb678c8c01cbf2
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationFRA'
+    method: POST
+    meta:
+      id: req_baa1df7d70a6468441a185b7e9ebf2d0
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationFRA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id017
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationFRA({{ _.key_JobClassificationFRA }})'
+    method: MERGE
+    meta:
+      id: req_11d7ca55f69d777e0560b611fb23af7b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationFRA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id017
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_68d2b784314eddfe6f92157a06c404e5
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationFRA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id017
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationFRA\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationFRA({{ _.key_JobClassificationFRA }})'
+    method: DELETE
+    meta:
+      id: req_32415838b7e8fb17bc0f1afe0ee609b2
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationFRA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationGBR
+  meta:
+    id: fld_cabc5aef92ca1de5b970329fc2eed04f
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationGBR'
+    method: POST
+    meta:
+      id: req_f34c2893af569bce05e579a304dee377
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationGBR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id018
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationGBR({{ _.key_JobClassificationGBR }})'
+    method: MERGE
+    meta:
+      id: req_91e3dceb7d070ce452e350179adbf610
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationGBR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id018
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_f5967f2bd8a1c76084189f202d3256f1
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationGBR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id018
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationGBR\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationGBR({{ _.key_JobClassificationGBR }})'
+    method: DELETE
+    meta:
+      id: req_144a83f1e639d4541c3e9f3e59857cd5
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationGBR. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationITA
+  meta:
+    id: fld_d4869b9dfe36d0afc75dcfccb2da7acd
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationITA'
+    method: POST
+    meta:
+      id: req_99f61227f055e67e1e7790991adcb96b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationITA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id019
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationITA({{ _.key_JobClassificationITA }})'
+    method: MERGE
+    meta:
+      id: req_51cd351e978283d25b169d0c4d734566
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationITA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id019
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_d48a2ed3bbd18304bfad2d55a61b122a
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationITA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id019
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationITA\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationITA({{ _.key_JobClassificationITA }})'
+    method: DELETE
+    meta:
+      id: req_a4326d2a86265ea53c734ae0829867a5
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationITA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationROU
+  meta:
+    id: fld_dc41689055a7ee8256125f427b8584e6
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationROU'
+    method: POST
+    meta:
+      id: req_a3b94b77fe8ce5c1d9a2d209f1541cb2
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationROU. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id020
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationROU({{ _.key_JobClassificationROU }})'
+    method: MERGE
+    meta:
+      id: req_d2916dc570d20ca6848c61fc69a45e8e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationROU. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id020
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_b2b75536485cba61d4694d38a8e46ece
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationROU. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id020
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationROU\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationROU({{ _.key_JobClassificationROU }})'
+    method: DELETE
+    meta:
+      id: req_5b0bef9bf613483fec44fd135e7430f4
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationROU. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationUKR
+  meta:
+    id: fld_15b675751e5bccf8e4420bc3742c497e
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationUKR'
+    method: POST
+    meta:
+      id: req_5fdbed2ae3086a181471cd2202604e7f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationUKR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id021
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationUKR({{ _.key_JobClassificationUKR }})'
+    method: MERGE
+    meta:
+      id: req_191e7c3a2b3bbcb1a14f7d6f3656b3a0
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationUKR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id021
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_1795bbe7afe47038791267e4d5e1b1e0
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationUKR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id021
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationUKR\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationUKR({{ _.key_JobClassificationUKR }})'
+    method: DELETE
+    meta:
+      id: req_d1b5db870c8e03456dde82f14d982181
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationUKR. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationUSA
+  meta:
+    id: fld_8e4b0551d631118d1d8aecd78699cb10
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationUSA'
+    method: POST
+    meta:
+      id: req_7bb55f3f38d9366b7977d7402ea665f8
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationUSA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id022
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationUSA({{ _.key_JobClassificationUSA }})'
+    method: MERGE
+    meta:
+      id: req_d4dff3b4b74c1e3a173abe2716b3caa3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationUSA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id022
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_7ffb259e7d3957b9d0858d710a6a61ec
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationUSA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id022
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationUSA\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationUSA({{ _.key_JobClassificationUSA }})'
+    method: DELETE
+    meta:
+      id: req_9b9126778b3ebc3020a83d277d41e23e
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationUSA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobClassificationZAF
+  meta:
+    id: fld_305a12cb289e188e97970840d9a11a7b
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationZAF'
+    method: POST
+    meta:
+      id: req_5ed9cb7dfaadab5fe5ed59137f1835c7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationZAF. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id023
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobClassificationZAF({{ _.key_JobClassificationZAF }})'
+    method: MERGE
+    meta:
+      id: req_de2e905cde00fd8bb74bfb67b5985a36
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationZAF. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id023
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobClassificationCountry_country\": \"REPLACE_ME\",\n  \"JobClassification_effectiveStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"JobClassification_externalCode\": \"REPLACE_ME\",\n  \"externalCode\":\
+        \ \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_d1dbc360bf7727a31fd26e9cc62dee20
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobClassificationCountry_country (Edm.String), JobClassification_effectiveStartDate (Edm.DateTime),
+        JobClassification_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+        key_JobClassificationZAF. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id023
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobClassificationZAF\"\n    },\n    \"JobClassificationCountry_country\"\
+        : \"REPLACE_ME\",\n    \"JobClassification_effectiveStartDate\": \"/Date(946684800000)/\",\n    \"JobClassification_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobClassificationZAF({{ _.key_JobClassificationZAF }})'
+    method: DELETE
+    meta:
+      id: req_75e843d6ce0f8d392f2ad3c1549f945e
+      description: 'Exclui o registro identificado pela chave. Chaves: JobClassificationCountry_country (Edm.String),
+        JobClassification_effectiveStartDate (Edm.DateTime), JobClassification_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_JobClassificationZAF. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobProfile
+  meta:
+    id: fld_1375f7f37277e96b77f83798ee6f9327
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobProfile'
+    method: POST
+    meta:
+      id: req_48ca505b3a3436ef35bf25dda998b2e7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_JobProfile.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id024
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobProfile({{ _.key_JobProfile }})'
+    method: MERGE
+    meta:
+      id: req_ab89004974860aaaa1f6a2a21ad60e5c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_JobProfile.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id024
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_3c618a5b758240c7bb56cd6bc134c349
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_JobProfile.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id024
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobProfile\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
+        ,\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobProfile({{ _.key_JobProfile }})'
+    method: DELETE
+    meta:
+      id: req_3b6ed79cbc011ba92afe6bbc2ca8e723
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_JobProfile. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: JobProfileLocalizedData
+  meta:
+    id: fld_465593a15c58368721395237a639bb92
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/JobProfileLocalizedData'
+    method: POST
+    meta:
+      id: req_42a976fecee9119f6e9d52f2d9b5b467
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_JobProfileLocalizedData. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id025
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobProfile_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"sectionId\"\
+        : \"REPLACE_ME\",\n  \"sectionType\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/JobProfileLocalizedData({{ _.key_JobProfileLocalizedData }})'
+    method: MERGE
+    meta:
+      id: req_32c151b5a78668884c3f45cfe0152f29
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_JobProfileLocalizedData. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id025
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobProfile_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"sectionId\"\
+        : \"REPLACE_ME\",\n  \"sectionType\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_dbb6b89fa416a625c674182352116877
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_JobProfileLocalizedData. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id025
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"JobProfileLocalizedData\"\n    },\n    \"JobProfile_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"REPLACE_ME\",\n    \"sectionId\": \"REPLACE_ME\",\n    \"sectionType\"\
+        : \"REPLACE_ME\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/JobProfileLocalizedData({{ _.key_JobProfileLocalizedData }})'
+    method: DELETE
+    meta:
+      id: req_c23aafc76a9e25435f083ab6a531dd50
+      description: 'Exclui o registro identificado pela chave. Chaves: JobProfile_externalCode (Edm.String), externalCode
+        (Edm.String). Execute Listar para preencher automaticamente key_JobProfileLocalizedData. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: RoleCompetencyMappingEntity
+  meta:
+    id: fld_d51128868242d6094c22256e44a18371
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/RoleCompetencyMappingEntity'
+    method: POST
+    meta:
+      id: req_f97870467f8ecfb27ae2b57077af993c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: RoleEntity_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_RoleCompetencyMappingEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id026
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"RoleEntity_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\"\
+        : \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/RoleCompetencyMappingEntity({{ _.key_RoleCompetencyMappingEntity }})'
+    method: MERGE
+    meta:
+      id: req_b834a0eff619b203517ff924a2f276f7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: RoleEntity_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_RoleCompetencyMappingEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id026
+    body:
+      mimeType: application/json
+      text: "{\n  \"RoleEntity_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\"\
+        : \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_e30b438ab2812c257b7f7ea9bd5dc6a1
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: RoleEntity_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_RoleCompetencyMappingEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id026
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"RoleCompetencyMappingEntity\"\n    },\n    \"RoleEntity_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"REPLACE_ME\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/RoleCompetencyMappingEntity({{ _.key_RoleCompetencyMappingEntity }})'
+    method: DELETE
+    meta:
+      id: req_3c45ffc1c133676d927c45d41dd3fbd4
+      description: 'Exclui o registro identificado pela chave. Chaves: RoleEntity_externalCode (Edm.String), externalCode
+        (Edm.String). Execute Listar para preencher automaticamente key_RoleCompetencyMappingEntity. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: RoleSkillMappingEntity
+  meta:
+    id: fld_bee918b033a365e3c2d332662c738890
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/RoleSkillMappingEntity'
+    method: POST
+    meta:
+      id: req_859d89e89ee9e53f968f6d4b852e5c8e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: RoleEntity_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_RoleSkillMappingEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id027
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"RoleEntity_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"inheritedStatusEnum\"\
+        : \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/RoleSkillMappingEntity({{ _.key_RoleSkillMappingEntity }})'
+    method: MERGE
+    meta:
+      id: req_6d2e0cfc81081782e67174452d76566e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: RoleEntity_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_RoleSkillMappingEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id027
+    body:
+      mimeType: application/json
+      text: "{\n  \"RoleEntity_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"inheritedStatusEnum\"\
+        : \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_b06e74700c5e0866d91e8114d9be5ecf
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: RoleEntity_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_RoleSkillMappingEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id027
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"RoleSkillMappingEntity\"\n    },\n    \"RoleEntity_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"REPLACE_ME\",\n    \"inheritedStatusEnum\": \"REPLACE_ME\",\n\
+        \    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/RoleSkillMappingEntity({{ _.key_RoleSkillMappingEntity }})'
+    method: DELETE
+    meta:
+      id: req_ec80dd4aa5a3968f727ed7fde4bd8593
+      description: 'Exclui o registro identificado pela chave. Chaves: RoleEntity_externalCode (Edm.String), externalCode
+        (Edm.String). Execute Listar para preencher automaticamente key_RoleSkillMappingEntity. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: SkillContent
+  meta:
+    id: fld_b086ebf15ff1a2bfa43c2be608c0186f
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/SkillContent'
+    method: POST
+    meta:
+      id: req_1fdc92c73254b9d07a0576db6dcac20f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_SkillContent. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id028
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobProfile_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"sectionId\"\
+        : \"REPLACE_ME\",\n  \"sectionType\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/SkillContent({{ _.key_SkillContent }})'
+    method: MERGE
+    meta:
+      id: req_0a860d8a5b22b8fa5508f507c3ca8316
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_SkillContent. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id028
+    body:
+      mimeType: application/json
+      text: "{\n  \"JobProfile_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"sectionId\"\
+        : \"REPLACE_ME\",\n  \"sectionType\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_47d158ee0858e61080e9eda2ee744536
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: JobProfile_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_SkillContent. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id028
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"SkillContent\"\n    },\n    \"JobProfile_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"REPLACE_ME\",\n    \"sectionId\": \"REPLACE_ME\",\n    \"sectionType\"\
+        : \"REPLACE_ME\",\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/SkillContent({{ _.key_SkillContent }})'
+    method: DELETE
+    meta:
+      id: req_238af704aab0638b8f354c550fd4d1ff
+      description: 'Exclui o registro identificado pela chave. Chaves: JobProfile_externalCode (Edm.String), externalCode
+        (Edm.String). Execute Listar para preencher automaticamente key_SkillContent. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: SkillEntity
+  meta:
+    id: fld_8036ed60a6c387d28b82d6d2c4501513
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/SkillEntity'
+    method: POST
+    meta:
+      id: req_58093c79e6853c9b44456886a0d51244
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_SkillEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id029
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/SkillEntity({{ _.key_SkillEntity }})'
+    method: MERGE
+    meta:
+      id: req_536d816c114f9341a1f34ff3ed577b0a
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_SkillEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id029
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_e8bd984af4e98c5345178465599edbe3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_SkillEntity.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id029
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"SkillEntity\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
+        ,\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/SkillEntity({{ _.key_SkillEntity }})'
+    method: DELETE
+    meta:
+      id: req_6b109203b0b5adccfa947302d2b35ec6
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_SkillEntity. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: SkillProfile
+  meta:
+    id: fld_aebc7c0b7397602a4f44b6fa07fbff88
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/SkillProfile'
+    method: POST
+    meta:
+      id: req_5ccb6f7ae25973fc793501c9ccbb502d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_SkillProfile.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id030
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/SkillProfile({{ _.key_SkillProfile }})'
+    method: MERGE
+    meta:
+      id: req_b90319974759bd65a9d5436f9eddbe36
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_SkillProfile.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id030
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"status\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_12d58269a11353d35f10809bd15f9d12
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_SkillProfile.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id030
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"SkillProfile\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
+        ,\n    \"status\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/SkillProfile({{ _.key_SkillProfile }})'
+    method: DELETE
+    meta:
+      id: req_03a71b4925e1536998b608b4798d5519
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_SkillProfile. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+environments:
+  name: Base Environment
+  meta:
+    id: env_729c0866e6c6afe6ad2147c82d8dcef1
+  data:
+    next_page_url: ''
+    key_CertificationContent: JobProfile_externalCode='REPLACE_ME',externalCode='REPLACE_ME'
+    key_CertificationEntity: externalCode='REPLACE_ME'
+    key_CompetencyContent: JobProfile_externalCode='REPLACE_ME',externalCode='REPLACE_ME'
+    key_CompetencyEntity: externalCode='REPLACE_ME'
+    key_EducationDegreeEntity: externalCode='REPLACE_ME'
+    key_EducationMajorEntity: externalCode='REPLACE_ME'
+    key_FamilyCompetencyMappingEntity: FamilyEntity_externalCode='REPLACE_ME',externalCode='REPLACE_ME'
+    key_JobClassificationAUS: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationBGR: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationBOL: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationBRA: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationCAN: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationCHL: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationFRA: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationGBR: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationITA: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationROU: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationUKR: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationUSA: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobClassificationZAF: JobClassificationCountry_country='REPLACE_ME',JobClassification_effectiveStartDate=datetime'2000-01-01T00:00:00',JobClassification_externalCode='REPLACE_ME',externalCode=0L
+    key_JobProfile: externalCode='REPLACE_ME'
+    key_JobProfileLocalizedData: JobProfile_externalCode='REPLACE_ME',externalCode='REPLACE_ME'
+    key_RoleCompetencyMappingEntity: RoleEntity_externalCode='REPLACE_ME',externalCode='REPLACE_ME'
+    key_RoleSkillMappingEntity: RoleEntity_externalCode='REPLACE_ME',externalCode='REPLACE_ME'
+    key_SkillContent: JobProfile_externalCode='REPLACE_ME',externalCode='REPLACE_ME'
+    key_SkillEntity: externalCode='REPLACE_ME'
+    key_SkillProfile: externalCode='REPLACE_ME'

@@ -1,0 +1,1019 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Permissoes-e-Grupos | Leitura 01
+meta:
+  id: wrk_659c6ca53d011b1841beb8a7448eaa72
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_c1b93991c7120fff75a36d7e2b418775
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_c0520361a805455caa8983559c4f14cf
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_cce4184c0d9d0c97d718b5e099057041
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_1e7d6da457b7f1b4ad9eb4b340cc2d90
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_3c5f2dd1542cdac5a1459dd0231aa43d
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: DGField
+  meta:
+    id: fld_82376b1ac06fe727fdeb13ac06e93077
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/DGField'
+    method: GET
+    meta:
+      id: req_0c13a7083c30a441947dbb0935f603d3
+      description: 'Chaves: name (Edm.String). Execute Listar para preencher automaticamente key_DGField. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id004
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: name,dataType,label,picklistId
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"name\": \"Edm.String\"};\n\
+        if (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_DGField', Object.entries(types).map(([k,t]) => k + '='\
+        \ + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/DGField'
+    method: GET
+    meta:
+      id: req_92cbd4eed813759f7ca6e54403641625
+      description: 'Chaves: name (Edm.String). Execute Listar para preencher automaticamente key_DGField. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: name,dataType,label,picklistId
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/DGField({{ _.key_DGField }})'
+    method: GET
+    meta:
+      id: req_6bde7fdc38c461619fffbe0a52aa3a15
+      description: 'Chaves: name (Edm.String). Execute Listar para preencher automaticamente key_DGField. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/DGField'
+    method: GET
+    meta:
+      id: req_8133b607fc3ef98fb57c9a22e241191a
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: name eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/DGField/$count'
+    method: GET
+    meta:
+      id: req_34129e8fb7a50de9fcc2faeb01e7e6fc
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+- name: DGFilter
+  meta:
+    id: fld_a6f1c057b533a379eec05456fccc9e7d
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/DGFilter'
+    method: GET
+    meta:
+      id: req_947a57e4c60d0689a17ad262f97f4296
+      description: 'Chaves: filterId (Edm.String). Execute Listar para preencher automaticamente key_DGFilter. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id005
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: filterId
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"filterId\": \"Edm.String\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_DGFilter', Object.entries(types).map(([k,t]) => k + '='\
+        \ + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/DGFilter'
+    method: GET
+    meta:
+      id: req_01887cfdd947b4968ce37fd6511ffa3c
+      description: 'Chaves: filterId (Edm.String). Execute Listar para preencher automaticamente key_DGFilter. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: filterId
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/DGFilter({{ _.key_DGFilter }})'
+    method: GET
+    meta:
+      id: req_45f32925d6e1077bf94a735b067fb36f
+      description: 'Chaves: filterId (Edm.String). Execute Listar para preencher automaticamente key_DGFilter. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/DGFilter/$count'
+    method: GET
+    meta:
+      id: req_e8ce7180d3a3cb70c955f0e2ca58afe6
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_d80f57272a3507a1abe4090da07394b9
+      description: ''
+    children:
+    - name: Navegar — field
+      url: '{{ _.base_url }}/odata/v2/DGFilter({{ _.key_DGFilter }})/field'
+      method: GET
+      meta:
+        id: req_877d9e0a8efc68698982b62c0de88dbc
+        description: 'Destino: DGField. Chaves: filterId (Edm.String). Execute Listar para preencher automaticamente
+          key_DGFilter. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — field
+      url: '{{ _.base_url }}/odata/v2/DGFilter'
+      method: GET
+      meta:
+        id: req_eb65aca18aa4cb24d1583871f046a3b7
+        description: 'Destino: DGField. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: field
+        disabled: false
+- name: DGPeoplePool
+  meta:
+    id: fld_07b04e7fdda6abccaa3beab624cd5b1a
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/DGPeoplePool'
+    method: GET
+    meta:
+      id: req_00738bca302e9078640d4ebbc4c211e9
+      description: 'Chaves: peoplePoolId (Edm.String). Execute Listar para preencher automaticamente key_DGPeoplePool.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id006
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: peoplePoolId
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"peoplePoolId\": \"Edm.String\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_DGPeoplePool', Object.entries(types).map(([k,t]) => k +\
+        \ '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/DGPeoplePool'
+    method: GET
+    meta:
+      id: req_b2019f2fcf6fda7c68e0f3019db770e9
+      description: 'Chaves: peoplePoolId (Edm.String). Execute Listar para preencher automaticamente key_DGPeoplePool.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: peoplePoolId
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/DGPeoplePool({{ _.key_DGPeoplePool }})'
+    method: GET
+    meta:
+      id: req_4eac1f6c05e960b4af4a90bf9879f663
+      description: 'Chaves: peoplePoolId (Edm.String). Execute Listar para preencher automaticamente key_DGPeoplePool.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/DGPeoplePool/$count'
+    method: GET
+    meta:
+      id: req_d820cf8a8b5b87d0d58b449974c07148
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_d1e3f05cbb2fec71c37e22b3a9451e5c
+      description: ''
+    children:
+    - name: Navegar — filters
+      url: '{{ _.base_url }}/odata/v2/DGPeoplePool({{ _.key_DGPeoplePool }})/filters'
+      method: GET
+      meta:
+        id: req_9985398240575797c7a5a14595864c0d
+        description: 'Destino: DGFilter. Chaves: peoplePoolId (Edm.String). Execute Listar para preencher automaticamente
+          key_DGPeoplePool. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — filters
+      url: '{{ _.base_url }}/odata/v2/DGPeoplePool'
+      method: GET
+      meta:
+        id: req_983dc7ea225a64a789d807dcdeb5c8c3
+        description: 'Destino: DGFilter. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: filters
+        disabled: false
+- name: DynamicGroup
+  meta:
+    id: fld_7a7cd47275fd229f2cdf61ca8c4f40d6
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/DynamicGroup'
+    method: GET
+    meta:
+      id: req_adeb93729900774dde38e08fda0eae67
+      description: 'Chaves: groupID (Edm.Int64). Execute Listar para preencher automaticamente key_DynamicGroup.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id007
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: groupID,activeMembershipCount,createdBy,groupName,groupType,lastModifiedDate,staticGroup,totalMemberCount
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"groupID\": \"Edm.Int64\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_DynamicGroup', Object.entries(types).map(([k,t]) => k +\
+        \ '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/DynamicGroup'
+    method: GET
+    meta:
+      id: req_b28325327df07f73cbf9ad1fc2b2aa9e
+      description: 'Chaves: groupID (Edm.Int64). Execute Listar para preencher automaticamente key_DynamicGroup.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: groupID,activeMembershipCount,createdBy,groupName,groupType,lastModifiedDate,staticGroup,totalMemberCount
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/DynamicGroup({{ _.key_DynamicGroup }})'
+    method: GET
+    meta:
+      id: req_90523ac49d171ed2b0bce8c589d3063e
+      description: 'Chaves: groupID (Edm.Int64). Execute Listar para preencher automaticamente key_DynamicGroup.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/DynamicGroup'
+    method: GET
+    meta:
+      id: req_f3147dc3d0e20fb05cad925d71cb606c
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: groupID eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/DynamicGroup/$count'
+    method: GET
+    meta:
+      id: req_6ae9f60f65bca452311ecc7c969a5f32
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_d3150f9f2e9468cbaa3cd55d6b374def
+      description: ''
+    children:
+    - name: Navegar — dgExcludePools
+      url: '{{ _.base_url }}/odata/v2/DynamicGroup({{ _.key_DynamicGroup }})/dgExcludePools'
+      method: GET
+      meta:
+        id: req_e347baec2a2e8d5fdd12c8d247d6dc5d
+        description: 'Destino: DGPeoplePool. Chaves: groupID (Edm.Int64). Execute Listar para preencher automaticamente
+          key_DynamicGroup. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — dgExcludePools
+      url: '{{ _.base_url }}/odata/v2/DynamicGroup'
+      method: GET
+      meta:
+        id: req_aa38ad04af4e8a779597ed9d4e29052e
+        description: 'Destino: DGPeoplePool. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: dgExcludePools
+        disabled: false
+    - name: Navegar — dgIncludePools
+      url: '{{ _.base_url }}/odata/v2/DynamicGroup({{ _.key_DynamicGroup }})/dgIncludePools'
+      method: GET
+      meta:
+        id: req_885e7f95e8debc091e0d57d3f466634f
+        description: 'Destino: DGPeoplePool. Chaves: groupID (Edm.Int64). Execute Listar para preencher automaticamente
+          key_DynamicGroup. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — dgIncludePools
+      url: '{{ _.base_url }}/odata/v2/DynamicGroup'
+      method: GET
+      meta:
+        id: req_2077d10386e1bdd7a6b77d7bf74b79d6
+        description: 'Destino: DGPeoplePool. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: dgIncludePools
+        disabled: false
+- name: RBPBasicPermission
+  meta:
+    id: fld_5c97cbbb9cbd4d5796bbffa904be63a6
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/RBPBasicPermission'
+    method: GET
+    meta:
+      id: req_fc8a9effb9b7b2b14e16762a06b088c6
+      description: 'Chaves: permissionId (Edm.Int64). Execute Listar para preencher automaticamente key_RBPBasicPermission.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id008
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: permissionId,permissionLongValue,permissionStringValue,permissionType
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"permissionId\": \"Edm.Int64\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_RBPBasicPermission', Object.entries(types).map(([k,t])\
+        \ => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/RBPBasicPermission'
+    method: GET
+    meta:
+      id: req_660f81b86ee525a51beed7e2e78345db
+      description: 'Chaves: permissionId (Edm.Int64). Execute Listar para preencher automaticamente key_RBPBasicPermission.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: permissionId,permissionLongValue,permissionStringValue,permissionType
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/RBPBasicPermission({{ _.key_RBPBasicPermission }})'
+    method: GET
+    meta:
+      id: req_e95885d0b84f1c3e8d232ca3efa8b5eb
+      description: 'Chaves: permissionId (Edm.Int64). Execute Listar para preencher automaticamente key_RBPBasicPermission.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/RBPBasicPermission'
+    method: GET
+    meta:
+      id: req_1a07c79c7bbd54ba1c99b04b461346b2
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: permissionId eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/RBPBasicPermission/$count'
+    method: GET
+    meta:
+      id: req_dfc5900a9722820b5738d8bec7d1d6a1
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+- name: RBPRole
+  meta:
+    id: fld_096fd66de3f7814bb44a275e911dc148
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/RBPRole'
+    method: GET
+    meta:
+      id: req_046ffcdb34048eb257d33d1f1f9003cb
+      description: 'Chaves: roleId (Edm.Int64). Execute Listar para preencher automaticamente key_RBPRole. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id009
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: roleId,lastModifiedBy,lastModifiedDate,roleDesc,roleName,userType
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"roleId\": \"Edm.Int64\"};\n\
+        if (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_RBPRole', Object.entries(types).map(([k,t]) => k + '='\
+        \ + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/RBPRole'
+    method: GET
+    meta:
+      id: req_216646f5a8ac8562cf5b70907e6261fe
+      description: 'Chaves: roleId (Edm.Int64). Execute Listar para preencher automaticamente key_RBPRole. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: roleId,lastModifiedBy,lastModifiedDate,roleDesc,roleName,userType
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/RBPRole({{ _.key_RBPRole }})'
+    method: GET
+    meta:
+      id: req_a62cff0e21f13169a5937874dea08c5e
+      description: 'Chaves: roleId (Edm.Int64). Execute Listar para preencher automaticamente key_RBPRole. Campos
+        e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/RBPRole'
+    method: GET
+    meta:
+      id: req_c44e279d383cc861c1cc02fb557208a1
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: roleId eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/RBPRole/$count'
+    method: GET
+    meta:
+      id: req_1d22e7677996cd075d9cab8a9c716c9a
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_7529ce4b42ce3073d254db1137bf0702
+      description: ''
+    children:
+    - name: Navegar — permissions
+      url: '{{ _.base_url }}/odata/v2/RBPRole({{ _.key_RBPRole }})/permissions'
+      method: GET
+      meta:
+        id: req_d02e82043337f30645be8e3ccc67722f
+        description: 'Destino: RBPBasicPermission. Chaves: roleId (Edm.Int64). Execute Listar para preencher automaticamente
+          key_RBPRole. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — permissions
+      url: '{{ _.base_url }}/odata/v2/RBPRole'
+      method: GET
+      meta:
+        id: req_2edabd018819e4d5ef827b9ac6b9974b
+        description: 'Destino: RBPBasicPermission. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: permissions
+        disabled: false
+environments:
+  name: Base Environment
+  meta:
+    id: env_659c6ca53d011b1841beb8a7448eaa72
+  data:
+    next_page_url: ''
+    key_DGField: name='REPLACE_ME'
+    key_DGFilter: filterId='REPLACE_ME'
+    key_DGPeoplePool: peoplePoolId='REPLACE_ME'
+    key_DynamicGroup: groupID=0L
+    key_RBPBasicPermission: permissionId=0L
+    key_RBPRole: roleId=0L

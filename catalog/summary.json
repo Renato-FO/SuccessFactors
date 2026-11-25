@@ -1,0 +1,219 @@
+{
+  "entities": 457,
+  "functions": 70,
+  "relationships": 2337,
+  "requests": 8354,
+  "collections": 42,
+  "files": [
+    {
+      "file": "collections/01-Usuarios-e-Perfil/Leitura-01.yaml",
+      "name": "SuccessFactors | Usuarios-e-Perfil | Leitura 01",
+      "requests": 212
+    },
+    {
+      "file": "collections/02-Pessoas-e-Dados-Pessoais/Leitura-01.yaml",
+      "name": "SuccessFactors | Pessoas-e-Dados-Pessoais | Leitura 01",
+      "requests": 783
+    },
+    {
+      "file": "collections/02-Pessoas-e-Dados-Pessoais/Leitura-02.yaml",
+      "name": "SuccessFactors | Pessoas-e-Dados-Pessoais | Leitura 02",
+      "requests": 837
+    },
+    {
+      "file": "collections/03-Vinculos-e-Cargos/Leitura-01.yaml",
+      "name": "SuccessFactors | Vinculos-e-Cargos | Leitura 01",
+      "requests": 247
+    },
+    {
+      "file": "collections/04-Estrutura-Organizacional/Leitura-01.yaml",
+      "name": "SuccessFactors | Estrutura-Organizacional | Leitura 01",
+      "requests": 581
+    },
+    {
+      "file": "collections/04-Estrutura-Organizacional/Leitura-02.yaml",
+      "name": "SuccessFactors | Estrutura-Organizacional | Leitura 02",
+      "requests": 201
+    },
+    {
+      "file": "collections/05-Cargos-e-Competencias/Leitura-01.yaml",
+      "name": "SuccessFactors | Cargos-e-Competencias | Leitura 01",
+      "requests": 364
+    },
+    {
+      "file": "collections/06-Remuneracao-e-Folha/Leitura-01.yaml",
+      "name": "SuccessFactors | Remuneracao-e-Folha | Leitura 01",
+      "requests": 467
+    },
+    {
+      "file": "collections/06-Remuneracao-e-Folha/Leitura-02.yaml",
+      "name": "SuccessFactors | Remuneracao-e-Folha | Leitura 02",
+      "requests": 261
+    },
+    {
+      "file": "collections/07-Tempo-e-Ausencias/Leitura-01.yaml",
+      "name": "SuccessFactors | Tempo-e-Ausencias | Leitura 01",
+      "requests": 467
+    },
+    {
+      "file": "collections/07-Tempo-e-Ausencias/Leitura-02.yaml",
+      "name": "SuccessFactors | Tempo-e-Ausencias | Leitura 02",
+      "requests": 368
+    },
+    {
+      "file": "collections/08-Beneficios/Leitura-01.yaml",
+      "name": "SuccessFactors | Beneficios | Leitura 01",
+      "requests": 583
+    },
+    {
+      "file": "collections/08-Beneficios/Leitura-02.yaml",
+      "name": "SuccessFactors | Beneficios | Leitura 02",
+      "requests": 519
+    },
+    {
+      "file": "collections/08-Beneficios/Leitura-03.yaml",
+      "name": "SuccessFactors | Beneficios | Leitura 03",
+      "requests": 331
+    },
+    {
+      "file": "collections/09-Recrutamento/Leitura-01.yaml",
+      "name": "SuccessFactors | Recrutamento | Leitura 01",
+      "requests": 476
+    },
+    {
+      "file": "collections/10-Onboarding/Leitura-01.yaml",
+      "name": "SuccessFactors | Onboarding | Leitura 01",
+      "requests": 131
+    },
+    {
+      "file": "collections/11-Desempenho-e-Metas/Leitura-01.yaml",
+      "name": "SuccessFactors | Desempenho-e-Metas | Leitura 01",
+      "requests": 210
+    },
+    {
+      "file": "collections/12-Talentos-e-Desenvolvimento/Leitura-01.yaml",
+      "name": "SuccessFactors | Talentos-e-Desenvolvimento | Leitura 01",
+      "requests": 58
+    },
+    {
+      "file": "collections/13-Workflows/Leitura-01.yaml",
+      "name": "SuccessFactors | Workflows | Leitura 01",
+      "requests": 83
+    },
+    {
+      "file": "collections/14-Permissoes-e-Grupos/Leitura-01.yaml",
+      "name": "SuccessFactors | Permissoes-e-Grupos | Leitura 01",
+      "requests": 42
+    },
+    {
+      "file": "collections/15-Listas-e-Localizacao/Leitura-01.yaml",
+      "name": "SuccessFactors | Listas-e-Localizacao | Leitura 01",
+      "requests": 92
+    },
+    {
+      "file": "collections/16-Plataforma-e-Documentos/Leitura-01.yaml",
+      "name": "SuccessFactors | Plataforma-e-Documentos | Leitura 01",
+      "requests": 43
+    },
+    {
+      "file": "collections/01-Usuarios-e-Perfil/Escrita-01.yaml",
+      "name": "SuccessFactors | Usuarios-e-Perfil | Escrita 01",
+      "requests": 13
+    },
+    {
+      "file": "collections/02-Pessoas-e-Dados-Pessoais/Escrita-01.yaml",
+      "name": "SuccessFactors | Pessoas-e-Dados-Pessoais | Escrita 01",
+      "requests": 43
+    },
+    {
+      "file": "collections/02-Pessoas-e-Dados-Pessoais/Escrita-02.yaml",
+      "name": "SuccessFactors | Pessoas-e-Dados-Pessoais | Escrita 02",
+      "requests": 35
+    },
+    {
+      "file": "collections/03-Vinculos-e-Cargos/Escrita-01.yaml",
+      "name": "SuccessFactors | Vinculos-e-Cargos | Escrita 01",
+      "requests": 19
+    },
+    {
+      "file": "collections/04-Estrutura-Organizacional/Escrita-01.yaml",
+      "name": "SuccessFactors | Estrutura-Organizacional | Escrita 01",
+      "requests": 117
+    },
+    {
+      "file": "collections/05-Cargos-e-Competencias/Escrita-01.yaml",
+      "name": "SuccessFactors | Cargos-e-Competencias | Escrita 01",
+      "requests": 112
+    },
+    {
+      "file": "collections/06-Remuneracao-e-Folha/Escrita-01.yaml",
+      "name": "SuccessFactors | Remuneracao-e-Folha | Escrita 01",
+      "requests": 135
+    },
+    {
+      "file": "collections/06-Remuneracao-e-Folha/Escrita-02.yaml",
+      "name": "SuccessFactors | Remuneracao-e-Folha | Escrita 02",
+      "requests": 80
+    },
+    {
+      "file": "collections/07-Tempo-e-Ausencias/Escrita-01.yaml",
+      "name": "SuccessFactors | Tempo-e-Ausencias | Escrita 01",
+      "requests": 108
+    },
+    {
+      "file": "collections/08-Beneficios/Escrita-01.yaml",
+      "name": "SuccessFactors | Beneficios | Escrita 01",
+      "requests": 80
+    },
+    {
+      "file": "collections/09-Recrutamento/Escrita-01.yaml",
+      "name": "SuccessFactors | Recrutamento | Escrita 01",
+      "requests": 49
+    },
+    {
+      "file": "collections/10-Onboarding/Escrita-01.yaml",
+      "name": "SuccessFactors | Onboarding | Escrita 01",
+      "requests": 28
+    },
+    {
+      "file": "collections/11-Desempenho-e-Metas/Escrita-01.yaml",
+      "name": "SuccessFactors | Desempenho-e-Metas | Escrita 01",
+      "requests": 21
+    },
+    {
+      "file": "collections/12-Talentos-e-Desenvolvimento/Escrita-01.yaml",
+      "name": "SuccessFactors | Talentos-e-Desenvolvimento | Escrita 01",
+      "requests": 16
+    },
+    {
+      "file": "collections/13-Workflows/Escrita-01.yaml",
+      "name": "SuccessFactors | Workflows | Escrita 01",
+      "requests": 5
+    },
+    {
+      "file": "collections/14-Permissoes-e-Grupos/Escrita-01.yaml",
+      "name": "SuccessFactors | Permissoes-e-Grupos | Escrita 01",
+      "requests": 7
+    },
+    {
+      "file": "collections/15-Listas-e-Localizacao/Escrita-01.yaml",
+      "name": "SuccessFactors | Listas-e-Localizacao | Escrita 01",
+      "requests": 25
+    },
+    {
+      "file": "collections/16-Plataforma-e-Documentos/Escrita-01.yaml",
+      "name": "SuccessFactors | Plataforma-e-Documentos | Escrita 01",
+      "requests": 19
+    },
+    {
+      "file": "collections/17-Operacoes/Funcoes.yaml",
+      "name": "SuccessFactors | Operacoes OData",
+      "requests": 74
+    },
+    {
+      "file": "collections/00-Inicio/Diagnostico-e-Consultas.yaml",
+      "name": "SuccessFactors | Inicio e diagnostico",
+      "requests": 12
+    }
+  ]
+}

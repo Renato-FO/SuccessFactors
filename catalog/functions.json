@@ -1,0 +1,1021 @@
+[
+  {
+    "name": "refreshMetadata",
+    "method": "GET",
+    "payload": false,
+    "parameters": []
+  },
+  {
+    "name": "getPeopleProfileHeader",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "userId",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getDefaultGoalPlanTemplateId",
+    "method": "GET",
+    "payload": false,
+    "parameters": []
+  },
+  {
+    "name": "getMatchedGuideLineRuleInfo",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "programId",
+        "type": "Edm.String"
+      },
+      {
+        "name": "userIds",
+        "type": "Edm.String"
+      },
+      {
+        "name": "category",
+        "type": "Edm.String"
+      },
+      {
+        "name": "level",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "isUserEligibleForSpotAwardProgram",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "programId",
+        "type": "Edm.String"
+      },
+      {
+        "name": "userId",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getEligibleSpotAwardsProgramCodes",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "userId",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "initiateOnboardingForUser",
+    "method": "POST",
+    "payload": true,
+    "parameters": []
+  },
+  {
+    "name": "createOnboardee",
+    "method": "POST",
+    "payload": true,
+    "parameters": []
+  },
+  {
+    "name": "updateFromExternalHrisONB",
+    "method": "POST",
+    "payload": true,
+    "parameters": []
+  },
+  {
+    "name": "getUserNameFormat",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "locale",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getPasswordPolicy",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "locale",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "fwdCandidateToColleague",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "candidateId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "referredTo",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "setSmsNotificationPreference",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "optIn",
+        "type": "Edm.Boolean"
+      },
+      {
+        "name": "candidateId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "isoCountryCode",
+        "type": "Edm.String"
+      },
+      {
+        "name": "cellPhone",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "reassignJobReq",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "jobReqId",
+        "type": "Edm.Int32"
+      },
+      {
+        "name": "hiringManager",
+        "type": "Edm.String"
+      },
+      {
+        "name": "recruiter",
+        "type": "Edm.String"
+      },
+      {
+        "name": "coordinator",
+        "type": "Edm.String"
+      },
+      {
+        "name": "vpOfStaffing",
+        "type": "Edm.String"
+      },
+      {
+        "name": "secondRecruiter",
+        "type": "Edm.String"
+      },
+      {
+        "name": "sourcer",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "initiateOnboarding",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "applicationId",
+        "type": "Edm.Int64"
+      }
+    ]
+  },
+  {
+    "name": "sendJobReqToPreviousStep",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "jobReqId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "sendJobReqToNextStep",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "jobReqId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "sendJobReqFormToUser",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "jobReqId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "userId",
+        "type": "Edm.String"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "approveOrDeclineJobReqForm",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "jobReqId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "actionType",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "addModifierToJobReq",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "jobReqId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "modifier",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "approveOffer",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "applicationId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "declineOffer",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "applicationId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "sendOfferForApproval",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "applicationId",
+        "type": "Edm.Int64"
+      }
+    ]
+  },
+  {
+    "name": "sendMailOfferLetter",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "offerLetterId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "sendMode",
+        "type": "Edm.String"
+      },
+      {
+        "name": "bodyTemplateId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "bodyLocale",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getRecruitingTemplate",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "templateName",
+        "type": "Edm.String"
+      },
+      {
+        "name": "templateType",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getOfferLetterTemplate",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "templateName",
+        "type": "Edm.String"
+      },
+      {
+        "name": "templateType",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "refreshInterviewAssessments",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "jobReqIdParam",
+        "type": "Edm.Int64"
+      }
+    ]
+  },
+  {
+    "name": "sendEmailToInterviewers",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "applicationId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "interviewers",
+        "type": "Edm.String"
+      },
+      {
+        "name": "attachResume",
+        "type": "Edm.Boolean"
+      },
+      {
+        "name": "attachCoverLetter",
+        "type": "Edm.Boolean"
+      },
+      {
+        "name": "attachInterviewGuide",
+        "type": "Edm.Boolean"
+      },
+      {
+        "name": "hiringManagerNote",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "inviteToApply",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "jobReqId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "candidateIds",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "checkUserPermission",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "accessUserId",
+        "type": "Edm.String"
+      },
+      {
+        "name": "permType",
+        "type": "Edm.String"
+      },
+      {
+        "name": "permStringValue",
+        "type": "Edm.String"
+      },
+      {
+        "name": "permLongValue",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "targetUserId",
+        "type": "Edm.String"
+      },
+      {
+        "name": "includeInactiveUser",
+        "type": "Edm.Boolean"
+      },
+      {
+        "name": "includeTBHUser",
+        "type": "Edm.Boolean"
+      }
+    ]
+  },
+  {
+    "name": "updateStaticGroup",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "groupId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "action",
+        "type": "Edm.String"
+      },
+      {
+        "name": "userIds",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getDynamicGroupsByUser",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "userId",
+        "type": "Edm.String"
+      },
+      {
+        "name": "groupSubType",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getUsersByDynamicGroup",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "groupId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "activeOnly",
+        "type": "Edm.Boolean"
+      }
+    ]
+  },
+  {
+    "name": "getUserRolesReport",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "userIds",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getPermissionMetadata",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "locale",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getUsersPermissions",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "userIds",
+        "type": "Edm.String"
+      },
+      {
+        "name": "locale",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getRolesPermissions",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "roleIds",
+        "type": "Edm.String"
+      },
+      {
+        "name": "locale",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "checkUserPermissions",
+    "method": "POST",
+    "payload": true,
+    "parameters": [
+      {
+        "name": "includeLegacy",
+        "type": "Edm.Boolean"
+      }
+    ]
+  },
+  {
+    "name": "getExpandedDynamicGroupById",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "groupId",
+        "type": "Edm.Int64"
+      }
+    ]
+  },
+  {
+    "name": "getExpandedDynamicGroupByName",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "groupName",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getExpandedDynamicGroupByNameAndSubType",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "groupName",
+        "type": "Edm.String"
+      },
+      {
+        "name": "groupType",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getUserRolesByUserId",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "userId",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "signForm",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "formDataId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "rejectForm",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "formDataId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "sendToNextStep",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "formDataId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      },
+      {
+        "name": "innerStepUserId",
+        "type": "Edm.String"
+      },
+      {
+        "name": "nextIStepEntryUser",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "sendToPreviousStep",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "formDataId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      },
+      {
+        "name": "previousIStepEntryUser",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "createPerformanceReviewForm",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "formSubjectId",
+        "type": "Edm.String"
+      },
+      {
+        "name": "formTemplateId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "sendEmail",
+        "type": "Edm.Boolean"
+      },
+      {
+        "name": "enRouteCopy",
+        "type": "Edm.Boolean"
+      }
+    ]
+  },
+  {
+    "name": "complete360",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "formDataId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getPositionObjectData",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "positionId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "userId",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getNewEmploymentEnabledForContingentWorkforce",
+    "method": "GET",
+    "payload": false,
+    "parameters": []
+  },
+  {
+    "name": "getDefaultDevGoalPlanTemplateId",
+    "method": "GET",
+    "payload": false,
+    "parameters": []
+  },
+  {
+    "name": "getExtEventMetaDataDefinition",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "event",
+        "type": "Edm.String"
+      },
+      {
+        "name": "topic",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "upsert",
+    "method": "POST",
+    "payload": true,
+    "parameters": []
+  },
+  {
+    "name": "logout",
+    "method": "GET",
+    "payload": false,
+    "parameters": []
+  },
+  {
+    "name": "isValidSession",
+    "method": "GET",
+    "payload": false,
+    "parameters": []
+  },
+  {
+    "name": "convertAssignmentIdExternal",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "oldAssignmentIdExternal",
+        "type": "Edm.String"
+      },
+      {
+        "name": "newAssignmentIdExternal",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getDocumentCategories",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "entityType",
+        "type": "Edm.String"
+      },
+      {
+        "name": "excludeInactive",
+        "type": "Edm.Boolean"
+      },
+      {
+        "name": "enforcePerm",
+        "type": "Edm.Boolean"
+      },
+      {
+        "name": "sortColumn",
+        "type": "Edm.String"
+      },
+      {
+        "name": "descending",
+        "type": "Edm.Boolean"
+      }
+    ]
+  },
+  {
+    "name": "getOpenTextAttachmentId",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "document_id",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "syncCMISDocument",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "document_id",
+        "type": "Edm.String"
+      },
+      {
+        "name": "action",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "approveSuccessors",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "nomineeIds",
+        "type": "Edm.String"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "rejectSuccessors",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "nomineeIds",
+        "type": "Edm.String"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "GetBizXAction",
+    "method": "GET",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "actionSourceId",
+        "type": "Edm.String"
+      },
+      {
+        "name": "userId",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "generateNextPersonID",
+    "method": "POST",
+    "payload": false,
+    "parameters": []
+  },
+  {
+    "name": "approveWfRequest",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "wfRequestId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "commentWfRequest",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "wfRequestId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "rejectWfRequest",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "wfRequestId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "sendbackWfRequest",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "wfRequestId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "withdrawWfRequest",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "wfRequestId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "comment",
+        "type": "Edm.String"
+      }
+    ]
+  },
+  {
+    "name": "getWorkflowPendingData",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "wfRequestId",
+        "type": "Edm.Int64"
+      }
+    ]
+  },
+  {
+    "name": "changeWfRequestApprover",
+    "method": "POST",
+    "payload": false,
+    "parameters": [
+      {
+        "name": "wfRequestId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "wfRequestStepId",
+        "type": "Edm.Int64"
+      },
+      {
+        "name": "updateToUserId",
+        "type": "Edm.String"
+      },
+      {
+        "name": "editTransaction",
+        "type": "Edm.String"
+      }
+    ]
+  }
+]

@@ -1,0 +1,393 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Talentos-e-Desenvolvimento | Escrita 01
+meta:
+  id: wrk_ff9f9f0ae0a24f9d7faa1a184d118e14
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_7a5bf08a7827a05f65e32ce91d6b87c4
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_f34a407fa49a7c51d3446b9a7e02bfbb
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_8d10e1f0ea8ed4fe2301d258a3f60d9b
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_b080b5b3d570050d0dbde668ec97bf2a
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_bd426475e45adae114f84bf4b5ff17f4
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: MentoringProgram
+  meta:
+    id: fld_26dfd69b76732f87c5d23d4dc4ddcd5c
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgram'
+    method: POST
+    meta:
+      id: req_793150ae9c4e58a99f2fecabbd02eb10
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgram.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id004
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalId\": \"0\",\n  \"matchingType\": \"REPLACE_ME\",\n  \"name\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgram({{ _.key_MentoringProgram }})'
+    method: MERGE
+    meta:
+      id: req_bc48b57cbc26c7f6c1eac9702b3db197
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgram.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalId\": \"0\",\n  \"matchingType\": \"REPLACE_ME\",\n  \"name\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_61e9186375b0200a55863472ceb11bf2
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgram.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"MentoringProgram\"\n    },\n    \"externalId\": \"\
+        0\",\n    \"matchingType\": \"REPLACE_ME\",\n    \"name\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/MentoringProgram({{ _.key_MentoringProgram }})'
+    method: DELETE
+    meta:
+      id: req_8abaab2c352afd6d27a1f83cb2cc0bdf
+      description: 'Exclui o registro identificado pela chave. Chaves: externalId (Edm.Int64). Execute Listar para
+        preencher automaticamente key_MentoringProgram. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: MentoringProgramMatchedParticipant
+  meta:
+    id: fld_0e12a23500cab445cc04d7ab1538ff09
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant'
+    method: POST
+    meta:
+      id: req_2e884645f7a0962deb37ee412ef44c03
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgramMatchedParticipant.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id005
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalId\": \"0\",\n  \"programId\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant({{ _.key_MentoringProgramMatchedParticipant
+      }})'
+    method: MERGE
+    meta:
+      id: req_0fca216d0debee1597a188fcf6229872
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgramMatchedParticipant.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalId\": \"0\",\n  \"programId\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_c4d683177f92341c4cccbc3ea19ebf01
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalId (Edm.Int64). Execute Listar para preencher automaticamente key_MentoringProgramMatchedParticipant.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"MentoringProgramMatchedParticipant\"\n    },\n    \"\
+        externalId\": \"0\",\n    \"programId\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/MentoringProgramMatchedParticipant({{ _.key_MentoringProgramMatchedParticipant
+      }})'
+    method: DELETE
+    meta:
+      id: req_16596398c9710c10370a23568c88a97d
+      description: 'Exclui o registro identificado pela chave. Chaves: externalId (Edm.Int64). Execute Listar para
+        preencher automaticamente key_MentoringProgramMatchedParticipant. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: TalentPool
+  meta:
+    id: fld_283724c46e16878b19723f87294bc09d
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/TalentPool'
+    method: POST
+    meta:
+      id: req_8e70113442f9485f816a8d7e20bea521
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar para preencher automaticamente
+        key_TalentPool. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id006
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"code\": \"REPLACE_ME\",\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"effectiveStatus\"\
+        : \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/TalentPool({{ _.key_TalentPool }})'
+    method: MERGE
+    meta:
+      id: req_6af3eaf86351bbecb7c7c8870af18837
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar para preencher automaticamente
+        key_TalentPool. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "{\n  \"code\": \"REPLACE_ME\",\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"effectiveStatus\"\
+        : \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_b11c0425ad78b977fe4b6d1b396de5c7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar para preencher automaticamente
+        key_TalentPool. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"TalentPool\"\n    },\n    \"code\": \"REPLACE_ME\"\
+        ,\n    \"effectiveStartDate\": \"/Date(946684800000)/\",\n    \"effectiveStatus\": \"REPLACE_ME\"\n  }\n\
+        ]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/TalentPool({{ _.key_TalentPool }})'
+    method: DELETE
+    meta:
+      id: req_9c3679e98ba23be8167ea8235d0ca655
+      description: 'Exclui o registro identificado pela chave. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime).
+        Execute Listar para preencher automaticamente key_TalentPool. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+environments:
+  name: Base Environment
+  meta:
+    id: env_ff9f9f0ae0a24f9d7faa1a184d118e14
+  data:
+    next_page_url: ''
+    key_MentoringProgram: externalId=0L
+    key_MentoringProgramMatchedParticipant: externalId=0L
+    key_TalentPool: code='REPLACE_ME',effectiveStartDate=datetime'2000-01-01T00:00:00'

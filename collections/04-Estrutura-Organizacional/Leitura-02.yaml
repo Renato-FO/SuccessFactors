@@ -1,0 +1,4387 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Estrutura-Organizacional | Leitura 02
+meta:
+  id: wrk_ad4a9880a0ffec188eeb1591804d332a
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_24302923ed1439cf15fb6a331f9bcfa1
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_e4ceb068963939f99a0e22e8b5f8b1e9
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_901351de4941033adfb3e93e1ec15b0f
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_717241f3a3d3bede61a7696b2516751b
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_3f23fec1d91ea404e5a75c7495792a8d
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: LegalEntityDEU
+  meta:
+    id: fld_15ad734045d227c6acbea9bf295a3d99
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityDEU'
+    method: GET
+    meta:
+      id: req_7989feb040dec60cfa8d22fc927b16d2
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityDEU. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id004
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDate,createdDateTime,lastModifiedBy,lastModifiedDate
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"LegalEntity_effectiveStartDate\"\
+        : \"Edm.DateTime\", \"LegalEntity_externalCode\": \"Edm.String\", \"externalCode\": \"Edm.Int64\"};\nif\
+        \ (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_LegalEntityDEU', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/LegalEntityDEU'
+    method: GET
+    meta:
+      id: req_dcaa505888bbaa3c02c5e4defeac76cf
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityDEU. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDate,createdDateTime,lastModifiedBy,lastModifiedDate
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/LegalEntityDEU({{ _.key_LegalEntityDEU }})'
+    method: GET
+    meta:
+      id: req_def0cd26288b5c265bf0b0ce6812a9fd
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityDEU. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityDEU'
+    method: GET
+    meta:
+      id: req_1018aad7190a394b920c4204d4be214d
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id004
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: LegalEntity_effectiveStartDate eq datetime'2000-01-01T00:00:00' and LegalEntity_externalCode eq 'REPLACE_ME'
+        and externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityDEU/$count'
+    method: GET
+    meta:
+      id: req_f05a5b89daac41845ea0bba0c7e282b6
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_4277774eb2224f7b87fa221219e41272
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityDEU({{ _.key_LegalEntityDEU }})/createdByNav'
+      method: GET
+      meta:
+        id: req_9437a1671bb400a43a04c34106d051db
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityDEU.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityDEU'
+      method: GET
+      meta:
+        id: req_389bfe5660b0943e63802e87a7c5f0b2
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityDEU({{ _.key_LegalEntityDEU }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_e4ae697190794428e68546d659ccbedb
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityDEU.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityDEU'
+      method: GET
+      meta:
+        id: req_49a6226856275ab4c2196ed528a4246d
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id004
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+- name: LegalEntityESP
+  meta:
+    id: fld_87a48a5b2eadcccc00b3987fa0951b6c
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityESP'
+    method: GET
+    meta:
+      id: req_f8e745b5fbacd6fc22478805d5c78ca3
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityESP. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id005
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,certificadoDeIdentificacionFiscal,createdBy,createdDate,createdDateTime,lastModifiedBy
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"LegalEntity_effectiveStartDate\"\
+        : \"Edm.DateTime\", \"LegalEntity_externalCode\": \"Edm.String\", \"externalCode\": \"Edm.Int64\"};\nif\
+        \ (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_LegalEntityESP', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/LegalEntityESP'
+    method: GET
+    meta:
+      id: req_da51bd0e848973c796552c03f9aeb2db
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityESP. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,certificadoDeIdentificacionFiscal,createdBy,createdDate,createdDateTime,lastModifiedBy
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/LegalEntityESP({{ _.key_LegalEntityESP }})'
+    method: GET
+    meta:
+      id: req_6484249c8e7ec81e378e3f9f918b81b2
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityESP. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityESP'
+    method: GET
+    meta:
+      id: req_25746ed61592e1f4504fd703638de304
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id005
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: LegalEntity_effectiveStartDate eq datetime'2000-01-01T00:00:00' and LegalEntity_externalCode eq 'REPLACE_ME'
+        and externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityESP/$count'
+    method: GET
+    meta:
+      id: req_3d553c446a26bfdcfe027178d196ce97
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_0d2daac33fd98d9fc11b403fd25a7e2d
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityESP({{ _.key_LegalEntityESP }})/createdByNav'
+      method: GET
+      meta:
+        id: req_b629926b145ae7c7dd5c39a4a532eb3c
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityESP.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityESP'
+      method: GET
+      meta:
+        id: req_2833328793a8b28466bd6c44cc3bf606
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityESP({{ _.key_LegalEntityESP }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_168ed0f408f3e27f05f3dd64d2ac6b04
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityESP.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityESP'
+      method: GET
+      meta:
+        id: req_bf83f29dd693c91fde87223f040c7830
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id005
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+- name: LegalEntityFRA
+  meta:
+    id: fld_36ad7539777b78ff6e8eb710fa8769dd
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityFRA'
+    method: GET
+    meta:
+      id: req_97dfc523bc6503d726e080af7cbad807
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityFRA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id006
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDate,createdDateTime,lastModifiedBy,lastModifiedDate
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"LegalEntity_effectiveStartDate\"\
+        : \"Edm.DateTime\", \"LegalEntity_externalCode\": \"Edm.String\", \"externalCode\": \"Edm.Int64\"};\nif\
+        \ (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_LegalEntityFRA', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/LegalEntityFRA'
+    method: GET
+    meta:
+      id: req_a20702db2f4c2ade568e26011a556d5d
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityFRA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDate,createdDateTime,lastModifiedBy,lastModifiedDate
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/LegalEntityFRA({{ _.key_LegalEntityFRA }})'
+    method: GET
+    meta:
+      id: req_28bf65aae8b339a6f74b87c5715bc2fc
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityFRA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityFRA'
+    method: GET
+    meta:
+      id: req_5a5fe9a7bc170d4a2fd55fde280d5405
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id006
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: LegalEntity_effectiveStartDate eq datetime'2000-01-01T00:00:00' and LegalEntity_externalCode eq 'REPLACE_ME'
+        and externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityFRA/$count'
+    method: GET
+    meta:
+      id: req_df0ba55965807cc6ed43b9efaf9c16c1
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_b15ed77e6a2a5f7aee4f816f7445ff72
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityFRA({{ _.key_LegalEntityFRA }})/createdByNav'
+      method: GET
+      meta:
+        id: req_ab1123e624878a8b5c47af728f3a255c
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityFRA.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityFRA'
+      method: GET
+      meta:
+        id: req_ec0ca83740bcd054351af0529ffab738
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityFRA({{ _.key_LegalEntityFRA }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_553802ea3adc99147f82ded0e7220aee
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityFRA.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityFRA'
+      method: GET
+      meta:
+        id: req_8ff958bb1c7dfce308577ed347133a5f
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id006
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+- name: LegalEntityPRY
+  meta:
+    id: fld_700d80408cbf5fea4b8fbb210148ed65
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityPRY'
+    method: GET
+    meta:
+      id: req_cf152128121346187ed3bb962f92cc15
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityPRY. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id007
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemRecordStatus
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"LegalEntity_effectiveStartDate\"\
+        : \"Edm.DateTime\", \"LegalEntity_externalCode\": \"Edm.String\", \"externalCode\": \"Edm.Int64\"};\nif\
+        \ (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_LegalEntityPRY', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/LegalEntityPRY'
+    method: GET
+    meta:
+      id: req_4a99bd24028a6b921fd9451d2af6f423
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityPRY. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemRecordStatus
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/LegalEntityPRY({{ _.key_LegalEntityPRY }})'
+    method: GET
+    meta:
+      id: req_f278b946d3c5c022d650a818257508c5
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityPRY. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityPRY'
+    method: GET
+    meta:
+      id: req_3bddd9e5558b143afe67f1c56e94fdc7
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id007
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: LegalEntity_effectiveStartDate eq datetime'2000-01-01T00:00:00' and LegalEntity_externalCode eq 'REPLACE_ME'
+        and externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityPRY/$count'
+    method: GET
+    meta:
+      id: req_1d567138e7e811b34b07f683dfbc0e9b
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_e4fc1c16a289ef74d7bc755ec8da168d
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityPRY({{ _.key_LegalEntityPRY }})/createdByNav'
+      method: GET
+      meta:
+        id: req_95bbf5decd9af204b56e3790293d958e
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityPRY.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityPRY'
+      method: GET
+      meta:
+        id: req_d0701cc5dd307fae80f8682b6cd3dc7d
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityPRY({{ _.key_LegalEntityPRY }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_49c285d1b1d69a700062309849bbf1e2
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityPRY.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityPRY'
+      method: GET
+      meta:
+        id: req_ab212f2b61c2c633d0425201cf663def
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id007
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+- name: LegalEntityRUS
+  meta:
+    id: fld_22c4374fa00cf3118e5e28bba700a480
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityRUS'
+    method: GET
+    meta:
+      id: req_857d8032542432d8755d80a6e5cda207
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityRUS. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id008
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDate,createdDateTime,lastModifiedBy,lastModifiedDate
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"LegalEntity_effectiveStartDate\"\
+        : \"Edm.DateTime\", \"LegalEntity_externalCode\": \"Edm.String\", \"externalCode\": \"Edm.Int64\"};\nif\
+        \ (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_LegalEntityRUS', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/LegalEntityRUS'
+    method: GET
+    meta:
+      id: req_3c63a702090925b3f1f41fd184924aa2
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityRUS. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDate,createdDateTime,lastModifiedBy,lastModifiedDate
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/LegalEntityRUS({{ _.key_LegalEntityRUS }})'
+    method: GET
+    meta:
+      id: req_7e27a5a394c6f91dfb80c88a5ebee428
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityRUS. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityRUS'
+    method: GET
+    meta:
+      id: req_4e79c6645df365724ea5d2111abf0c6f
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id008
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: LegalEntity_effectiveStartDate eq datetime'2000-01-01T00:00:00' and LegalEntity_externalCode eq 'REPLACE_ME'
+        and externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityRUS/$count'
+    method: GET
+    meta:
+      id: req_20176b054f20d9aa8695cf1ee301b0a9
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_f1bc7d99963ea7a1793128e99d40d61c
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityRUS({{ _.key_LegalEntityRUS }})/createdByNav'
+      method: GET
+      meta:
+        id: req_684e84c366a60c1824cc62cbb25fb4f4
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityRUS.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityRUS'
+      method: GET
+      meta:
+        id: req_d1f919ccf57cbb96ea59099753046f7f
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityRUS({{ _.key_LegalEntityRUS }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_feea11e17d68004dbcf6644a2d6119f7
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityRUS.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityRUS'
+      method: GET
+      meta:
+        id: req_f98885b7a3a2276c6b5d1beaccc79b4b
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id008
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+- name: LegalEntitySAU
+  meta:
+    id: fld_825c590a00ca89fd5c92737dc923c383
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySAU'
+    method: GET
+    meta:
+      id: req_4928349a3ff5dfda2d206e7c591931ed
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySAU. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id009
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,companyCommercialRegistrationNumber,companyRepresentative,createdBy,createdDateTime,gosiOfficeBranch
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"LegalEntity_effectiveStartDate\"\
+        : \"Edm.DateTime\", \"LegalEntity_externalCode\": \"Edm.String\", \"externalCode\": \"Edm.Int64\"};\nif\
+        \ (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_LegalEntitySAU', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySAU'
+    method: GET
+    meta:
+      id: req_f57f0e8b8ea7b0583a6683034f2c44a1
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySAU. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,companyCommercialRegistrationNumber,companyRepresentative,createdBy,createdDateTime,gosiOfficeBranch
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySAU({{ _.key_LegalEntitySAU }})'
+    method: GET
+    meta:
+      id: req_34a9ba40c5fbe88131f45424fccb73bc
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySAU. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySAU'
+    method: GET
+    meta:
+      id: req_8b90944d6297df3cf417d69079371030
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id009
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: LegalEntity_effectiveStartDate eq datetime'2000-01-01T00:00:00' and LegalEntity_externalCode eq 'REPLACE_ME'
+        and externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySAU/$count'
+    method: GET
+    meta:
+      id: req_991ddfa99f7e5517cce442aaa6cdbee8
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_980122c60ac409ec8332abae33c818eb
+      description: ''
+    children:
+    - name: Navegar — companyRepresentativeNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySAU({{ _.key_LegalEntitySAU }})/companyRepresentativeNav'
+      method: GET
+      meta:
+        id: req_4124ee483352fabad9bb0785ad5e6446
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySAU.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — companyRepresentativeNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySAU'
+      method: GET
+      meta:
+        id: req_7c3db3f248234d83e225f397e30569b3
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: companyRepresentativeNav
+        disabled: false
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySAU({{ _.key_LegalEntitySAU }})/createdByNav'
+      method: GET
+      meta:
+        id: req_2974967191dd819c6fa0cb52a4c653fe
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySAU.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySAU'
+      method: GET
+      meta:
+        id: req_e9979370342fb7021eb4e69234c530bd
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySAU({{ _.key_LegalEntitySAU }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_2beb0ea036bccc6026e304fe4e566166
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySAU.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySAU'
+      method: GET
+      meta:
+        id: req_d823dfcbc1025a7c58b12fcc67c80334
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id009
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+- name: LegalEntitySGP
+  meta:
+    id: fld_699fb7315f6987938aea0aef22c0634e
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySGP'
+    method: GET
+    meta:
+      id: req_a187edf0e90247ca19a8104ef95d2224
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySGP. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id010
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemRecordStatus
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"LegalEntity_effectiveStartDate\"\
+        : \"Edm.DateTime\", \"LegalEntity_externalCode\": \"Edm.String\", \"externalCode\": \"Edm.Int64\"};\nif\
+        \ (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_LegalEntitySGP', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySGP'
+    method: GET
+    meta:
+      id: req_e954a1b40ad97638e09710558e74db13
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySGP. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id010
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemRecordStatus
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySGP({{ _.key_LegalEntitySGP }})'
+    method: GET
+    meta:
+      id: req_4b2b3822cc2b50e2023e831129e6515a
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySGP. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id010
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySGP'
+    method: GET
+    meta:
+      id: req_a3a5f94e8f007f73e5e56d33efdcdea0
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id010
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: LegalEntity_effectiveStartDate eq datetime'2000-01-01T00:00:00' and LegalEntity_externalCode eq 'REPLACE_ME'
+        and externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySGP/$count'
+    method: GET
+    meta:
+      id: req_00015e662aed7afa8a179b47a2d36eb0
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_1156fd077302baf7cfdd466ea261066a
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySGP({{ _.key_LegalEntitySGP }})/createdByNav'
+      method: GET
+      meta:
+        id: req_ef403e0820494973520ff8e0fdc9c801
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySGP.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySGP'
+      method: GET
+      meta:
+        id: req_5e473c4abe1f0db78334a1baff447608
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySGP({{ _.key_LegalEntitySGP }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_c780eb49c67694dfeb7fa3675de7dd6c
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySGP.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySGP'
+      method: GET
+      meta:
+        id: req_32559f0b22e300455fa9fc6a74aacecd
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id010
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+- name: LegalEntitySVN
+  meta:
+    id: fld_a6b4ad69367abee0fdebc1bd08675494
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySVN'
+    method: GET
+    meta:
+      id: req_c8120aad15d439facc0401ae59fc6fe2
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySVN. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id011
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,companyMasterNumber,companyRegistrationNumber,createdBy,createdDateTime,employerTaxNumber
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"LegalEntity_effectiveStartDate\"\
+        : \"Edm.DateTime\", \"LegalEntity_externalCode\": \"Edm.String\", \"externalCode\": \"Edm.Int64\"};\nif\
+        \ (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_LegalEntitySVN', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySVN'
+    method: GET
+    meta:
+      id: req_97c046348d4255b58f7bd45668165464
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySVN. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id011
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,companyMasterNumber,companyRegistrationNumber,createdBy,createdDateTime,employerTaxNumber
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySVN({{ _.key_LegalEntitySVN }})'
+    method: GET
+    meta:
+      id: req_48130ac764261bc41d781e4a1bf2f70d
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySVN. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id011
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySVN'
+    method: GET
+    meta:
+      id: req_91b68b4b82618d90352f3e3a74c57812
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id011
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: LegalEntity_effectiveStartDate eq datetime'2000-01-01T00:00:00' and LegalEntity_externalCode eq 'REPLACE_ME'
+        and externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/LegalEntitySVN/$count'
+    method: GET
+    meta:
+      id: req_04a414e3d35b2062d105aed397cf1316
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_1df7e0ba5314691a45680e1d31316422
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySVN({{ _.key_LegalEntitySVN }})/createdByNav'
+      method: GET
+      meta:
+        id: req_b659014051065be41b78e085cb8d4cd8
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySVN.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id011
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySVN'
+      method: GET
+      meta:
+        id: req_d6e7b4fe06650e13a5e58e0748b9ed4a
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id011
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySVN({{ _.key_LegalEntitySVN }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_04ef141cc70d63fc1e066c81bda4f63c
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntitySVN.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id011
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntitySVN'
+      method: GET
+      meta:
+        id: req_8023f480de9895f4d9c51eb8f6663074
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id011
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+- name: LegalEntityTHA
+  meta:
+    id: fld_18ff60efd6cc86d2e9af90c4f24f042f
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityTHA'
+    method: GET
+    meta:
+      id: req_ed5c6db97cf598497dd33a9546d090ed
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityTHA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id012
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemRecordStatus
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"LegalEntity_effectiveStartDate\"\
+        : \"Edm.DateTime\", \"LegalEntity_externalCode\": \"Edm.String\", \"externalCode\": \"Edm.Int64\"};\nif\
+        \ (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_LegalEntityTHA', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/LegalEntityTHA'
+    method: GET
+    meta:
+      id: req_64e806580a3c535f7ffebb91a46400c4
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityTHA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id012
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemRecordStatus
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/LegalEntityTHA({{ _.key_LegalEntityTHA }})'
+    method: GET
+    meta:
+      id: req_5f5f9d8ce1e3c91c7f262776210db362
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityTHA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id012
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityTHA'
+    method: GET
+    meta:
+      id: req_bb819e5cf634b35febe4d1eced5ef25a
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id012
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: LegalEntity_effectiveStartDate eq datetime'2000-01-01T00:00:00' and LegalEntity_externalCode eq 'REPLACE_ME'
+        and externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityTHA/$count'
+    method: GET
+    meta:
+      id: req_933357a029760b3313271d39ffa73c0c
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_82572bc5c3fbe22d09be84052bf0a64b
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityTHA({{ _.key_LegalEntityTHA }})/createdByNav'
+      method: GET
+      meta:
+        id: req_cf08c4b78e40a129a31c02b30da6ae9b
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityTHA.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id012
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityTHA'
+      method: GET
+      meta:
+        id: req_7356abb904eaf82d19ef2e9b34b4a183
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id012
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityTHA({{ _.key_LegalEntityTHA }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_4ae0fedce7f89a458cd1c0ccf1bfb544
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityTHA.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id012
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityTHA'
+      method: GET
+      meta:
+        id: req_3794c1808e168cc4d1abc2c5985fe302
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id012
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+- name: LegalEntityTUN
+  meta:
+    id: fld_374f30ccbe10d45a9c715a7a238bfe4f
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityTUN'
+    method: GET
+    meta:
+      id: req_c59e2f8b335a230bf82f01a9e00a2828
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityTUN. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id013
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,categoryCode,codeVat,createdBy,createdDateTime,fiscalID
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"LegalEntity_effectiveStartDate\"\
+        : \"Edm.DateTime\", \"LegalEntity_externalCode\": \"Edm.String\", \"externalCode\": \"Edm.Int64\"};\nif\
+        \ (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_LegalEntityTUN', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/LegalEntityTUN'
+    method: GET
+    meta:
+      id: req_cea47e3c94db32dc093c504641698526
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityTUN. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id013
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,categoryCode,codeVat,createdBy,createdDateTime,fiscalID
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/LegalEntityTUN({{ _.key_LegalEntityTUN }})'
+    method: GET
+    meta:
+      id: req_444b3eeff8b0321aea29af748777a166
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityTUN. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id013
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityTUN'
+    method: GET
+    meta:
+      id: req_a7880ccb98295f614a017ad6c6373801
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id013
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: LegalEntity_effectiveStartDate eq datetime'2000-01-01T00:00:00' and LegalEntity_externalCode eq 'REPLACE_ME'
+        and externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityTUN/$count'
+    method: GET
+    meta:
+      id: req_34e21b21ecb9140239d151a91644aeb9
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_fe99939e228c72f551a1dfe9e541a968
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityTUN({{ _.key_LegalEntityTUN }})/createdByNav'
+      method: GET
+      meta:
+        id: req_2ad82c29cba0edb139219b6079a11736
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityTUN.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id013
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityTUN'
+      method: GET
+      meta:
+        id: req_ad5e121bb44e5a2e2eb1a846103cd763
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id013
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityTUN({{ _.key_LegalEntityTUN }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_1e7930792b27a0f468f99e182326b2e7
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityTUN.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id013
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityTUN'
+      method: GET
+      meta:
+        id: req_1b3fc132d2e4c2b8ec4b0e093064bb6e
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id013
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+- name: LegalEntityUSA
+  meta:
+    id: fld_8908541d5898c1b50441ed6bab877638
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityUSA'
+    method: GET
+    meta:
+      id: req_f024ecc8ce29ef07765866f060fd44de
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityUSA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id014
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDate,createdDateTime,eeoCompanyCode,employerID
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"LegalEntity_effectiveStartDate\"\
+        : \"Edm.DateTime\", \"LegalEntity_externalCode\": \"Edm.String\", \"externalCode\": \"Edm.Int64\"};\nif\
+        \ (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_LegalEntityUSA', Object.entries(types).map(([k,t]) => k\
+        \ + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/LegalEntityUSA'
+    method: GET
+    meta:
+      id: req_a50234b138dfe354a810db1da04d2fbf
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityUSA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id014
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: LegalEntity_effectiveStartDate,LegalEntity_externalCode,externalCode,createdBy,createdDate,createdDateTime,eeoCompanyCode,employerID
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/LegalEntityUSA({{ _.key_LegalEntityUSA }})'
+    method: GET
+    meta:
+      id: req_bbb21b7b3ec3aa19d5f9b41a27f321f8
+      description: 'Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode (Edm.String),
+        externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityUSA. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id014
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityUSA'
+    method: GET
+    meta:
+      id: req_61bb7a8ac7030f81faef5a7dcf31faa5
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id014
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: LegalEntity_effectiveStartDate eq datetime'2000-01-01T00:00:00' and LegalEntity_externalCode eq 'REPLACE_ME'
+        and externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/LegalEntityUSA/$count'
+    method: GET
+    meta:
+      id: req_fec3b79843fd93f67b963eee1a31a34e
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_1615577ead880af8798d83387b6c98e3
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityUSA({{ _.key_LegalEntityUSA }})/createdByNav'
+      method: GET
+      meta:
+        id: req_54d89e4a27de4a338b02dabe4dfb1ef3
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityUSA.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id014
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityUSA'
+      method: GET
+      meta:
+        id: req_b5c3c66f6c37079cc58b17a46d5b0682
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id014
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityUSA({{ _.key_LegalEntityUSA }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_ab120309824d541025fe99567a4c97d8
+        description: 'Destino: User. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityUSA.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id014
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityUSA'
+      method: GET
+      meta:
+        id: req_31cbc94280bfbb49124ece6d7ba196e1
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id014
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — legalEntityTypeNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityUSA({{ _.key_LegalEntityUSA }})/legalEntityTypeNav'
+      method: GET
+      meta:
+        id: req_9a9626d5e83a7264186a4707a64d0c74
+        description: 'Destino: PickListValueV2. Chaves: LegalEntity_effectiveStartDate (Edm.DateTime), LegalEntity_externalCode
+          (Edm.String), externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_LegalEntityUSA.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id014
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — legalEntityTypeNav
+      url: '{{ _.base_url }}/odata/v2/LegalEntityUSA'
+      method: GET
+      meta:
+        id: req_104b67faa1cb80f3ba936d65576793dd
+        description: 'Destino: PickListValueV2. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id014
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: legalEntityTypeNav
+        disabled: false
+- name: Position
+  meta:
+    id: fld_7818c8b191a30a9c0d0f50e9882f8bdb
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/Position'
+    method: GET
+    meta:
+      id: req_39a7d609e383a8f19bd2453a29c67c70
+      description: 'Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar para preencher
+        automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id015
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: code,effectiveStartDate,businessUnit,changeReason,comment,company,costCenter,createdBy,createdDate
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"code\": \"Edm.String\", \"\
+        effectiveStartDate\": \"Edm.DateTime\"};\nif (first && Object.keys(types).length && Object.keys(types).every(k\
+        \ => first[k] !== undefined && first[k] !== null)) {\n  const literal = (type, value) => {\n    if (type\
+        \ === 'Edm.String') return \"'\" + String(value).replaceAll(\"'\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime'\
+        \ || type === 'Edm.DateTimeOffset') {\n      const m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\\
+        d{4})?\\)\\/$/);\n      const iso = new Date(m ? Number(m[1]) : value).toISOString().replace('.000Z', type\
+        \ === 'Edm.DateTime' ? '' : 'Z');\n      return (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset')\
+        \ + \"'\" + iso + \"'\";\n    }\n    if (type === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return\
+        \ String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type] || '');\n\
+        \  };\n  insomnia.environment.set('key_Position', Object.entries(types).map(([k,t]) => k + '=' + literal(t,first[k])).join(','));\n\
+        }\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url', data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/Position'
+    method: GET
+    meta:
+      id: req_536db8955fcd8d0a26c27e7e5e495ffd
+      description: 'Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar para preencher
+        automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id015
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: code,effectiveStartDate,businessUnit,changeReason,comment,company,costCenter,createdBy,createdDate
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})'
+    method: GET
+    meta:
+      id: req_d0043fb9bef9b5eae2052f72f8ded126
+      description: 'Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar para preencher
+        automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id015
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/Position'
+    method: GET
+    meta:
+      id: req_17bf1089a134351b0111e40b84432247
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id015
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: code eq 'REPLACE_ME' and effectiveStartDate eq datetime'2000-01-01T00:00:00'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/Position/$count'
+    method: GET
+    meta:
+      id: req_978a36b30e37af2c7027b4ebbbff0d1e
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: 06 — Data de referencia
+    url: '{{ _.base_url }}/odata/v2/Position'
+    method: GET
+    meta:
+      id: req_03e04ffaf9b215b1b859937d079ed826
+      description: Consulta temporal; ajuste as_of_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id015
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: asOfDate
+      value: '{{ _.as_of_date }}'
+      disabled: false
+  - name: 07 — Historico por periodo
+    url: '{{ _.base_url }}/odata/v2/Position'
+    method: GET
+    meta:
+      id: req_b8a0f0a85854b9047630ee2eb0fd9e40
+      description: Consulta temporal; ajuste from_date e to_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id015
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: fromDate
+      value: '{{ _.from_date }}'
+      disabled: false
+    - name: toDate
+      value: '{{ _.to_date }}'
+      disabled: false
+  - name: Relacionamentos
+    meta:
+      id: fld_8ae9a946ad4ca96740c3cd2f7a5224ea
+      description: ''
+    children:
+    - name: Navegar — businessUnitNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/businessUnitNav'
+      method: GET
+      meta:
+        id: req_f9b3245ad778b40f038ca1b3b1edef71
+        description: 'Destino: FOBusinessUnit. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — businessUnitNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_1dfa6f2ad22bb44d0da785bf98d0ed62
+        description: 'Destino: FOBusinessUnit. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: businessUnitNav
+        disabled: false
+    - name: Navegar — changeReasonNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/changeReasonNav'
+      method: GET
+      meta:
+        id: req_b5f7ae112d97bebe9b7951bc6af21e33
+        description: 'Destino: PickListValueV2. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — changeReasonNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_c216158f774c356804a1c2aff802cd38
+        description: 'Destino: PickListValueV2. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: changeReasonNav
+        disabled: false
+    - name: Navegar — companyNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/companyNav'
+      method: GET
+      meta:
+        id: req_3629603038c2ed4f97ddcf6adeff0b99
+        description: 'Destino: FOCompany. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — companyNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_327e9840cf622ab7a5d0ae29fe68e6e4
+        description: 'Destino: FOCompany. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: companyNav
+        disabled: false
+    - name: Navegar — costCenterNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/costCenterNav'
+      method: GET
+      meta:
+        id: req_94d222e714fb670dba32fcbeb0d93381
+        description: 'Destino: FOCostCenter. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — costCenterNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_e2fa4b7f94e5f9bc712063309155506c
+        description: 'Destino: FOCostCenter. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: costCenterNav
+        disabled: false
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/createdByNav'
+      method: GET
+      meta:
+        id: req_d218be7ea9120c35595b82a3d3d93ca3
+        description: 'Destino: User. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar
+          para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_5a60a5a20fa8b1bdcfb6a4b669c94b9f
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — departmentNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/departmentNav'
+      method: GET
+      meta:
+        id: req_bfcc159fc52bf95da298357c8a0002fa
+        description: 'Destino: FODepartment. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — departmentNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_0bff4c91c4eb7e8195d2c38e80d6ded8
+        description: 'Destino: FODepartment. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: departmentNav
+        disabled: false
+    - name: Navegar — divisionNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/divisionNav'
+      method: GET
+      meta:
+        id: req_29f783f212e059b4fda6b830fb45d8f3
+        description: 'Destino: FODivision. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — divisionNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_b4c19b637f4cf7a06f5ca3605e500803
+        description: 'Destino: FODivision. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: divisionNav
+        disabled: false
+    - name: Navegar — employeeClassNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/employeeClassNav'
+      method: GET
+      meta:
+        id: req_0a73cd3f294cfb98ceb8e5341cfeed8e
+        description: 'Destino: PickListValueV2. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — employeeClassNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_5ef071268de9e9c1a2b2ec8f2bc6e9be
+        description: 'Destino: PickListValueV2. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: employeeClassNav
+        disabled: false
+    - name: Navegar — employmentTypeNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/employmentTypeNav'
+      method: GET
+      meta:
+        id: req_e8f3e45523cd1c06c8dc7670e3c36764
+        description: 'Destino: PickListValueV2. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — employmentTypeNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_a2de7503c5e183f7276333e494f49c57
+        description: 'Destino: PickListValueV2. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: employmentTypeNav
+        disabled: false
+    - name: Navegar — incumbentNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/incumbentNav'
+      method: GET
+      meta:
+        id: req_5be518c333e96a9f5a6e53859ea6c4f1
+        description: 'Destino: User. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar
+          para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — incumbentNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_7a7f630e9f841c4f46d8ceef29052fee
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: incumbentNav
+        disabled: false
+    - name: Navegar — jobCodeNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/jobCodeNav'
+      method: GET
+      meta:
+        id: req_fe03949d2031a3dd7d56c691ecd6022c
+        description: 'Destino: FOJobCode. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — jobCodeNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_377bd11d6e1089ed17c94c70f7605074
+        description: 'Destino: FOJobCode. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: jobCodeNav
+        disabled: false
+    - name: Navegar — jobLevelNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/jobLevelNav'
+      method: GET
+      meta:
+        id: req_b718546570973955d06de8643aa60786
+        description: 'Destino: PickListValueV2. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — jobLevelNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_3e9bf6f9ef69a793c0ce0911b0ac9a4c
+        description: 'Destino: PickListValueV2. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: jobLevelNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_0003ec18e4bb1e3a6a1649c83e00cb11
+        description: 'Destino: User. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar
+          para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_fc8a29c8298e65a774b072d3f94ee5cd
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — locationNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/locationNav'
+      method: GET
+      meta:
+        id: req_db9400ca3d3eecbd39e97b3b3edafd3a
+        description: 'Destino: FOLocation. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — locationNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_829844df92bb269bb68569318b5f1de3
+        description: 'Destino: FOLocation. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: locationNav
+        disabled: false
+    - name: Navegar — parentPosition
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/parentPosition'
+      method: GET
+      meta:
+        id: req_bee122b75d4b816e765f9c8c335495aa
+        description: 'Destino: Position. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute Listar
+          para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — parentPosition
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_45772b596e160ea040a098ff2b185963
+        description: 'Destino: Position. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: parentPosition
+        disabled: false
+    - name: Navegar — payGradeNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/payGradeNav'
+      method: GET
+      meta:
+        id: req_7b94c832069398e796dc31aadce40f37
+        description: 'Destino: FOPayGrade. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — payGradeNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_bb0448d84db59f0699cd959c0e31abde
+        description: 'Destino: FOPayGrade. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: payGradeNav
+        disabled: false
+    - name: Navegar — payRangeNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/payRangeNav'
+      method: GET
+      meta:
+        id: req_41f8876656f3e7aea77be0623150652b
+        description: 'Destino: FOPayRange. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — payRangeNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_ea4cb34c69ab0a408cebdb2304f52ced
+        description: 'Destino: FOPayRange. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: payRangeNav
+        disabled: false
+    - name: Navegar — positionCriticalityNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/positionCriticalityNav'
+      method: GET
+      meta:
+        id: req_dd73adda0f645f3cabf57107aaef93a0
+        description: 'Destino: PickListValueV2. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — positionCriticalityNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_7cd1f8b589a537d852da2c10778bf28b
+        description: 'Destino: PickListValueV2. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: positionCriticalityNav
+        disabled: false
+    - name: Navegar — positionMatrixRelationship
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/positionMatrixRelationship'
+      method: GET
+      meta:
+        id: req_d3c097ef9f1c18291d574e45443d8aa3
+        description: 'Destino: PositionMatrixRelationship. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime).
+          Execute Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — positionMatrixRelationship
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_6076caec34a7b464356d29cf0ae80c08
+        description: 'Destino: PositionMatrixRelationship. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: positionMatrixRelationship
+        disabled: false
+    - name: Navegar — regularTemporaryNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/regularTemporaryNav'
+      method: GET
+      meta:
+        id: req_65517c9307bd6d763be5e56009429c9e
+        description: 'Destino: PickListValueV2. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+    - name: Expandir — regularTemporaryNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_edb9f03053eb38a65690dc3015633516
+        description: 'Destino: PickListValueV2. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: regularTemporaryNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/Position({{ _.key_Position }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_825ae4b19e739e629fdd5111866d27d4
+        description: 'Destino: WfRequest. Chaves: code (Edm.String), effectiveStartDate (Edm.DateTime). Execute
+          Listar para preencher automaticamente key_Position. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/Position'
+      method: GET
+      meta:
+        id: req_a4ba07842ae624973bf8187a5f782d64
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id015
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+- name: PositionMatrixRelationship
+  meta:
+    id: fld_991d75e01f2fde5e9562c4b06ee5effa
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship'
+    method: GET
+    meta:
+      id: req_c909b70fe417280894146ff1ae824196
+      description: 'Chaves: Position_code (Edm.String), Position_effectiveStartDate (Edm.DateTime), matrixRelationshipType
+        (Edm.String). Execute Listar para preencher automaticamente key_PositionMatrixRelationship. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id016
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: Position_code,Position_effectiveStartDate,matrixRelationshipType,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemCreatedBy
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"Position_code\": \"Edm.String\"\
+        , \"Position_effectiveStartDate\": \"Edm.DateTime\", \"matrixRelationshipType\": \"Edm.String\"};\nif (first\
+        \ && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k] !== null))\
+        \ {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_PositionMatrixRelationship', Object.entries(types).map(([k,t])\
+        \ => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship'
+    method: GET
+    meta:
+      id: req_73dc9ed848027181e73c132cdeb638b7
+      description: 'Chaves: Position_code (Edm.String), Position_effectiveStartDate (Edm.DateTime), matrixRelationshipType
+        (Edm.String). Execute Listar para preencher automaticamente key_PositionMatrixRelationship. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id016
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: Position_code,Position_effectiveStartDate,matrixRelationshipType,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemCreatedBy
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship({{ _.key_PositionMatrixRelationship }})'
+    method: GET
+    meta:
+      id: req_98618c2ebc7241dc480cee126d4e4e96
+      description: 'Chaves: Position_code (Edm.String), Position_effectiveStartDate (Edm.DateTime), matrixRelationshipType
+        (Edm.String). Execute Listar para preencher automaticamente key_PositionMatrixRelationship. Campos e permissoes
+        podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id016
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship'
+    method: GET
+    meta:
+      id: req_f1ce33e9f227ce3f3ce7ffcbec8d5992
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id016
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: Position_code eq 'REPLACE_ME' and Position_effectiveStartDate eq datetime'2000-01-01T00:00:00' and
+        matrixRelationshipType eq 'REPLACE_ME'
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship/$count'
+    method: GET
+    meta:
+      id: req_9ca495e7a00aa8e7befe86afd5f681d9
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_5450935b820f02db083b93e193f8d2b0
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship({{ _.key_PositionMatrixRelationship }})/createdByNav'
+      method: GET
+      meta:
+        id: req_3d037f8340c3ab92991f535d8d30d5a3
+        description: 'Destino: User. Chaves: Position_code (Edm.String), Position_effectiveStartDate (Edm.DateTime),
+          matrixRelationshipType (Edm.String). Execute Listar para preencher automaticamente key_PositionMatrixRelationship.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id016
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship'
+      method: GET
+      meta:
+        id: req_ea5b522f8046f4790658ac937d39cdfd
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id016
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship({{ _.key_PositionMatrixRelationship }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_7ff5fe76b1c6083aaf42f245e4339484
+        description: 'Destino: User. Chaves: Position_code (Edm.String), Position_effectiveStartDate (Edm.DateTime),
+          matrixRelationshipType (Edm.String). Execute Listar para preencher automaticamente key_PositionMatrixRelationship.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id016
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship'
+      method: GET
+      meta:
+        id: req_15453894b3dfd276dfb415cf1d34aff3
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id016
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — matrixRelationshipTypeNav
+      url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship({{ _.key_PositionMatrixRelationship }})/matrixRelationshipTypeNav'
+      method: GET
+      meta:
+        id: req_b6ee75e6c343de441bb33977720289c5
+        description: 'Destino: PickListValueV2. Chaves: Position_code (Edm.String), Position_effectiveStartDate
+          (Edm.DateTime), matrixRelationshipType (Edm.String). Execute Listar para preencher automaticamente key_PositionMatrixRelationship.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id016
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — matrixRelationshipTypeNav
+      url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship'
+      method: GET
+      meta:
+        id: req_8a18c550051c6fa2b6614b6032c5738e
+        description: 'Destino: PickListValueV2. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id016
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: matrixRelationshipTypeNav
+        disabled: false
+    - name: Navegar — relatedPositionNav
+      url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship({{ _.key_PositionMatrixRelationship }})/relatedPositionNav'
+      method: GET
+      meta:
+        id: req_b21fb9c5733f7bc230f5f0360ac9d6f1
+        description: 'Destino: Position. Chaves: Position_code (Edm.String), Position_effectiveStartDate (Edm.DateTime),
+          matrixRelationshipType (Edm.String). Execute Listar para preencher automaticamente key_PositionMatrixRelationship.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id016
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — relatedPositionNav
+      url: '{{ _.base_url }}/odata/v2/PositionMatrixRelationship'
+      method: GET
+      meta:
+        id: req_cf7e9f09b65056f12534fbb5b517e466
+        description: 'Destino: Position. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id016
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: relatedPositionNav
+        disabled: false
+- name: PositionRequisitionStatus
+  meta:
+    id: fld_b61857e33349904f8f97824b18d8eb1d
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/PositionRequisitionStatus'
+    method: GET
+    meta:
+      id: req_3ce0eaaece2c8ce764d9e2e67e349f13
+      description: 'Chaves: code (Edm.Int64). Execute Listar para preencher automaticamente key_PositionRequisitionStatus.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id017
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: code,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemRecordStatus,positionId,processingStatus
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"code\": \"Edm.Int64\"};\n\
+        if (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_PositionRequisitionStatus', Object.entries(types).map(([k,t])\
+        \ => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/PositionRequisitionStatus'
+    method: GET
+    meta:
+      id: req_8bbaff9d51d3cfe67e4eabf5a31ce932
+      description: 'Chaves: code (Edm.Int64). Execute Listar para preencher automaticamente key_PositionRequisitionStatus.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id017
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: code,createdBy,createdDateTime,lastModifiedBy,lastModifiedDateTime,mdfSystemRecordStatus,positionId,processingStatus
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/PositionRequisitionStatus({{ _.key_PositionRequisitionStatus }})'
+    method: GET
+    meta:
+      id: req_8e2d5919948c269da5478e3b8bb2719a
+      description: 'Chaves: code (Edm.Int64). Execute Listar para preencher automaticamente key_PositionRequisitionStatus.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id017
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/PositionRequisitionStatus'
+    method: GET
+    meta:
+      id: req_9e91c6a508fc2716a8fcd40ed635f7b0
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id017
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: code eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/PositionRequisitionStatus/$count'
+    method: GET
+    meta:
+      id: req_42794082fa12df4c896d3025cf7ae9d2
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: Relacionamentos
+    meta:
+      id: fld_419fe78fe628dd314a422360da82ac90
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/PositionRequisitionStatus({{ _.key_PositionRequisitionStatus }})/createdByNav'
+      method: GET
+      meta:
+        id: req_820651579a86bbe59e3aebb4a2ea9257
+        description: 'Destino: User. Chaves: code (Edm.Int64). Execute Listar para preencher automaticamente key_PositionRequisitionStatus.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id017
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/PositionRequisitionStatus'
+      method: GET
+      meta:
+        id: req_ffd5607075c0ce9d7499d67cfcc6a8df
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id017
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/PositionRequisitionStatus({{ _.key_PositionRequisitionStatus }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_c7d9ba388fbd6d55e2ee30851f19b010
+        description: 'Destino: User. Chaves: code (Edm.Int64). Execute Listar para preencher automaticamente key_PositionRequisitionStatus.
+          Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id017
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/PositionRequisitionStatus'
+      method: GET
+      meta:
+        id: req_5c7d6658f8887fbf9f003f07ed3dd290
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id017
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/PositionRequisitionStatus({{ _.key_PositionRequisitionStatus }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_d91d68c568f7a0000ff25c5be8b6ff57
+        description: 'Destino: WfRequest. Chaves: code (Edm.Int64). Execute Listar para preencher automaticamente
+          key_PositionRequisitionStatus. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id017
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/PositionRequisitionStatus'
+      method: GET
+      meta:
+        id: req_2e09ed3cc0caedc24cbc5992f8b7979c
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id017
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+- name: PositionRightToReturn
+  meta:
+    id: fld_4675d374be87b819c9d3f35ffb5e59dd
+    description: ''
+  children:
+  - name: 01 — Listar
+    url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+    method: GET
+    meta:
+      id: req_e0233a83895f0bb787eaea206f99f3d0
+      description: 'Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_PositionRightToReturn.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - &id018
+      name: $format
+      value: json
+      disabled: false
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $skip
+      value: '{{ _.skip }}'
+      disabled: false
+    - name: $select
+      value: externalCode,createdBy,createdDateTime,effectiveStatus,endDate,gaEndJobInfoId,gaEventReason,gaStartJobInfoId
+      disabled: true
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\ninsomnia.test('HTTP 200', () => insomnia.expect(insomnia.response.code).to.eql(200));\n\
+        const first = data.d && data.d.results && data.d.results[0];\nconst types = {\"externalCode\": \"Edm.Int64\"\
+        };\nif (first && Object.keys(types).length && Object.keys(types).every(k => first[k] !== undefined && first[k]\
+        \ !== null)) {\n  const literal = (type, value) => {\n    if (type === 'Edm.String') return \"'\" + String(value).replaceAll(\"\
+        '\", \"''\") + \"'\";\n    if (type === 'Edm.DateTime' || type === 'Edm.DateTimeOffset') {\n      const\
+        \ m = String(value).match(/^\\/Date\\((-?\\d+)(?:[+-]\\d{4})?\\)\\/$/);\n      const iso = new Date(m ?\
+        \ Number(m[1]) : value).toISOString().replace('.000Z', type === 'Edm.DateTime' ? '' : 'Z');\n      return\
+        \ (type === 'Edm.DateTime' ? 'datetime' : 'datetimeoffset') + \"'\" + iso + \"'\";\n    }\n    if (type\
+        \ === 'Edm.Guid') return \"guid'\" + value + \"'\";\n    return String(value) + ({'Edm.Int64':'L','Edm.Decimal':'M','Edm.Single':'f','Edm.Double':'d'}[type]\
+        \ || '');\n  };\n  insomnia.environment.set('key_PositionRightToReturn', Object.entries(types).map(([k,t])\
+        \ => k + '=' + literal(t,first[k])).join(','));\n}\nif (data.d && data.d.__next) insomnia.environment.set('next_page_url',\
+        \ data.d.__next);\n"
+  - name: 02 — Selecionar campos
+    url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+    method: GET
+    meta:
+      id: req_204dce4fa838ba2d27c0fae5cdebcc63
+      description: 'Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_PositionRightToReturn.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id018
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $select
+      value: externalCode,createdBy,createdDateTime,effectiveStatus,endDate,gaEndJobInfoId,gaEventReason,gaStartJobInfoId
+      disabled: false
+  - name: 03 — Buscar por chave
+    url: '{{ _.base_url }}/odata/v2/PositionRightToReturn({{ _.key_PositionRightToReturn }})'
+    method: GET
+    meta:
+      id: req_7b7cb2f99e8262bc641377976c0c4f78
+      description: 'Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente key_PositionRightToReturn.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id018
+  - name: 04 — Filtrar
+    url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+    method: GET
+    meta:
+      id: req_52ed02fba82be4b23ab012971eec5cbf
+      description: Substitua REPLACE_ME e os valores de exemplo. Use literais OData adequados ao tipo.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id018
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: $filter
+      value: externalCode eq 0L
+      disabled: false
+  - name: 05 — Contar
+    url: '{{ _.base_url }}/odata/v2/PositionRightToReturn/$count'
+    method: GET
+    meta:
+      id: req_e62d741125099871bb3dad2ad5cc7ddc
+      description: Retorna texto com a contagem. Suporte depende da entidade.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: text/plain
+    parameters: []
+  - name: 06 — Data de referencia
+    url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+    method: GET
+    meta:
+      id: req_4e9078902ce599f1db302c5cf2eb6625
+      description: Consulta temporal; ajuste as_of_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id018
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: asOfDate
+      value: '{{ _.as_of_date }}'
+      disabled: false
+  - name: 07 — Historico por periodo
+    url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+    method: GET
+    meta:
+      id: req_b5481a568235e2ee23530760bccb8e50
+      description: Consulta temporal; ajuste from_date e to_date.
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters:
+    - *id018
+    - name: $top
+      value: '{{ _.page_size }}'
+      disabled: false
+    - name: fromDate
+      value: '{{ _.from_date }}'
+      disabled: false
+    - name: toDate
+      value: '{{ _.to_date }}'
+      disabled: false
+  - name: Relacionamentos
+    meta:
+      id: fld_e4e17fe097cd01fb5fc61ab138bbc567
+      description: ''
+    children:
+    - name: Navegar — createdByNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn({{ _.key_PositionRightToReturn }})/createdByNav'
+      method: GET
+      meta:
+        id: req_d137e20df8d5f36b7e4248a36f9204bd
+        description: 'Destino: User. Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+          key_PositionRightToReturn. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+    - name: Expandir — createdByNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+      method: GET
+      meta:
+        id: req_2f94f3e6b4049227df7d51c8bfefc50f
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: createdByNav
+        disabled: false
+    - name: Navegar — gaEventReasonNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn({{ _.key_PositionRightToReturn }})/gaEventReasonNav'
+      method: GET
+      meta:
+        id: req_1a8aff0c71f153fc79d5dfe0d4519916
+        description: 'Destino: FOEventReason. Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+          key_PositionRightToReturn. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — gaEventReasonNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+      method: GET
+      meta:
+        id: req_0c3abc2027eba42b2e0165480678f414
+        description: 'Destino: FOEventReason. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: gaEventReasonNav
+        disabled: false
+    - name: Navegar — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn({{ _.key_PositionRightToReturn }})/lastModifiedByNav'
+      method: GET
+      meta:
+        id: req_43181f7d7f507ba51932ecd0d94a1d32
+        description: 'Destino: User. Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+          key_PositionRightToReturn. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+    - name: Expandir — lastModifiedByNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+      method: GET
+      meta:
+        id: req_230311c594eed74ce88aa784971651b8
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: lastModifiedByNav
+        disabled: false
+    - name: Navegar — loaTimeTypeNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn({{ _.key_PositionRightToReturn }})/loaTimeTypeNav'
+      method: GET
+      meta:
+        id: req_c4f264582264920a14d67fbf2582dbf0
+        description: 'Destino: TimeType. Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+          key_PositionRightToReturn. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+    - name: Expandir — loaTimeTypeNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+      method: GET
+      meta:
+        id: req_eec4607dba1925fd526f838c79febe46
+        description: 'Destino: TimeType. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: loaTimeTypeNav
+        disabled: false
+    - name: Navegar — positionNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn({{ _.key_PositionRightToReturn }})/positionNav'
+      method: GET
+      meta:
+        id: req_525386248fe376ef1a5c3ed01aa7f0cd
+        description: 'Destino: Position. Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+          key_PositionRightToReturn. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — positionNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+      method: GET
+      meta:
+        id: req_395ff0cf71bb2c9cb98dd877873f0232
+        description: 'Destino: Position. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: positionNav
+        disabled: false
+    - name: Navegar — userIdNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn({{ _.key_PositionRightToReturn }})/userIdNav'
+      method: GET
+      meta:
+        id: req_306db22c5df788d891e01fe00e0cbb34
+        description: 'Destino: User. Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+          key_PositionRightToReturn. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+    - name: Expandir — userIdNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+      method: GET
+      meta:
+        id: req_19b0243a94063df977497d0b6a4a0311
+        description: 'Destino: User. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: userIdNav
+        disabled: false
+    - name: Navegar — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn({{ _.key_PositionRightToReturn }})/wfRequestNav'
+      method: GET
+      meta:
+        id: req_a41e6c9e7b3b3a3ad3d5af8a2e861186
+        description: 'Destino: WfRequest. Chaves: externalCode (Edm.Int64). Execute Listar para preencher automaticamente
+          key_PositionRightToReturn. Campos e permissoes podem variar por tenant.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+      - name: $top
+        value: '{{ _.page_size }}'
+        disabled: false
+    - name: Expandir — wfRequestNav
+      url: '{{ _.base_url }}/odata/v2/PositionRightToReturn'
+      method: GET
+      meta:
+        id: req_c6f6199fb0db05b2a1f9d4992e601e5e
+        description: 'Destino: WfRequest. Expansao limitada a um registro principal.'
+      authentication:
+        type: bearer
+        token: '{{ _.access_token }}'
+        prefix: Bearer
+      headers:
+      - name: Accept
+        value: application/json
+      parameters:
+      - *id018
+      - name: $top
+        value: '1'
+        disabled: false
+      - name: $expand
+        value: wfRequestNav
+        disabled: false
+environments:
+  name: Base Environment
+  meta:
+    id: env_ad4a9880a0ffec188eeb1591804d332a
+  data:
+    next_page_url: ''
+    key_LegalEntityDEU: LegalEntity_effectiveStartDate=datetime'2000-01-01T00:00:00',LegalEntity_externalCode='REPLACE_ME',externalCode=0L
+    key_LegalEntityESP: LegalEntity_effectiveStartDate=datetime'2000-01-01T00:00:00',LegalEntity_externalCode='REPLACE_ME',externalCode=0L
+    key_LegalEntityFRA: LegalEntity_effectiveStartDate=datetime'2000-01-01T00:00:00',LegalEntity_externalCode='REPLACE_ME',externalCode=0L
+    key_LegalEntityPRY: LegalEntity_effectiveStartDate=datetime'2000-01-01T00:00:00',LegalEntity_externalCode='REPLACE_ME',externalCode=0L
+    key_LegalEntityRUS: LegalEntity_effectiveStartDate=datetime'2000-01-01T00:00:00',LegalEntity_externalCode='REPLACE_ME',externalCode=0L
+    key_LegalEntitySAU: LegalEntity_effectiveStartDate=datetime'2000-01-01T00:00:00',LegalEntity_externalCode='REPLACE_ME',externalCode=0L
+    key_LegalEntitySGP: LegalEntity_effectiveStartDate=datetime'2000-01-01T00:00:00',LegalEntity_externalCode='REPLACE_ME',externalCode=0L
+    key_LegalEntitySVN: LegalEntity_effectiveStartDate=datetime'2000-01-01T00:00:00',LegalEntity_externalCode='REPLACE_ME',externalCode=0L
+    key_LegalEntityTHA: LegalEntity_effectiveStartDate=datetime'2000-01-01T00:00:00',LegalEntity_externalCode='REPLACE_ME',externalCode=0L
+    key_LegalEntityTUN: LegalEntity_effectiveStartDate=datetime'2000-01-01T00:00:00',LegalEntity_externalCode='REPLACE_ME',externalCode=0L
+    key_LegalEntityUSA: LegalEntity_effectiveStartDate=datetime'2000-01-01T00:00:00',LegalEntity_externalCode='REPLACE_ME',externalCode=0L
+    key_Position: code='REPLACE_ME',effectiveStartDate=datetime'2000-01-01T00:00:00'
+    key_PositionMatrixRelationship: Position_code='REPLACE_ME',Position_effectiveStartDate=datetime'2000-01-01T00:00:00',matrixRelationshipType='REPLACE_ME'
+    key_PositionRequisitionStatus: code=0L
+    key_PositionRightToReturn: externalCode=0L

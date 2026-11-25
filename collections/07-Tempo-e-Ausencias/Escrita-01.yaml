@@ -1,0 +1,2469 @@
+type: collection.insomnia.rest/5.0
+schema_version: '5.1'
+name: SuccessFactors | Tempo-e-Ausencias | Escrita 01
+meta:
+  id: wrk_2d9e4d03f703654e4933a2c1d821f0d3
+  description: Selecione o ambiente global SuccessFactors. Modelos genericos OData v2; ajuste parametros e permissoes
+    antes de usar.
+collection:
+- name: 00 — Autenticacao
+  meta:
+    id: fld_d7b6574741296c726ffd2dc61fe25807
+    description: ''
+  children:
+  - name: Conectar — BTP + SuccessFactors em uma chamada
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_f7b33e9d849ada098d12b0b3c4d34d32
+      description: Preencha o ambiente global SuccessFactors e selecione-o na coleção. Obtém token BTP e consulta
+        a Destination automaticamente. Os tokens ficam disponíveis para todas as coleções que usam esse ambiente
+        global.
+    authentication: &id001
+      type: basic
+      username: '{{ _.btp_client_id }}'
+      password: '{{ _.btp_client_secret }}'
+    headers: &id002
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: "const data = insomnia.response.json();\nif (!data.access_token) throw new Error('Token BTP\
+        \ ausente');\ninsomnia.globals.set('btp_access_token', data.access_token);\nconst service = String(insomnia.variables.get('destination_service_url')\
+        \ || '').replace(/\\/$/, '');\nconst name = insomnia.variables.get('destination_name');\nif (!service ||\
+        \ !name) throw new Error('Preencha destination_service_url e destination_name');\nconst response = await\
+        \ new Promise((resolve, reject) => {\n  insomnia.sendRequest({\n    url: service + '/destination-configuration/v1/destinations/'\
+        \ + encodeURIComponent(name),\n    method: 'GET',\n    header: { Authorization: 'Bearer ' + data.access_token,\
+        \ Accept: 'application/json' }\n  }, (error, response) => error ? reject(error) : resolve(response));\n\
+        });\nif (response.code !== 200) throw new Error('Destination retornou HTTP ' + response.code);\nconst destination\
+        \ = response.json();\nconst token = (destination.authTokens || []).find(t => t.value && !t.error);\nif (!token)\
+        \ throw new Error('Destination não retornou token utilizável');\ninsomnia.globals.set('access_token', token.value);\n\
+        insomnia.test('Token SuccessFactors obtido', () => insomnia.expect(token.value).to.be.a('string').and.not.empty);\n"
+    body: &id003
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: grant_type
+        value: client_credentials
+        disabled: false
+  - name: 01 — Token BTP
+    url: '{{ _.btp_token_url }}'
+    method: POST
+    meta:
+      id: req_30ca2285f4ccbc0de0cd3b8018cc389b
+      description: 'Service key do Destination Service: url + /oauth/token, clientid e clientsecret.'
+    authentication: *id001
+    headers: *id002
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''btp_access_token'', data.access_token);'
+    body: *id003
+  - name: 02 — Token SuccessFactors via Destination
+    url: '{{ _.destination_service_url }}/destination-configuration/v1/destinations/{{ _.destination_name }}'
+    method: GET
+    meta:
+      id: req_4a7ab4efc0c2eeb304a6cd4a08471c36
+      description: destination_service_url = uri da service key. Salva automaticamente access_token global.
+    authentication:
+      type: bearer
+      token: '{{ _.btp_access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        const token = (data.authTokens || []).find(t => t.value && !t.error);
+
+        if (!token) throw new Error(''Destination sem token utilizável'');
+
+        insomnia.globals.set(''access_token'', token.value);'
+  - name: Alternativa — Token direto SAML
+    url: '{{ _.base_url }}/oauth/token'
+    method: POST
+    meta:
+      id: req_fe8199fcd1d572bd6e9659c79fe4f359
+      description: Requer assertion SAML assinada em Base64. sf_company_id é o ID do tenant; sf_client_id é a API
+        Key OAuth.
+    authentication: {}
+    headers:
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+    parameters: []
+    scripts:
+      afterResponse: 'const data = insomnia.response.json();
+
+        if (!data.access_token) throw new Error(''Token ausente na resposta'');
+
+        insomnia.globals.set(''access_token'', data.access_token);'
+    body:
+      mimeType: application/x-www-form-urlencoded
+      params:
+      - name: company_id
+        value: '{{ _.sf_company_id }}'
+        disabled: false
+      - name: client_id
+        value: '{{ _.sf_client_id }}'
+        disabled: false
+      - name: grant_type
+        value: urn:ietf:params:oauth:grant-type:saml2-bearer
+        disabled: false
+      - name: assertion
+        value: '{{ _.saml_assertion }}'
+        disabled: false
+- name: AccrualCalculationBase
+  meta:
+    id: fld_d226c3632114e2c66c18ca00c87204cb
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/AccrualCalculationBase'
+    method: POST
+    meta:
+      id: req_0a3e89e996e27dc95fda4b1d1f723654
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_AccrualCalculationBase.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id004
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"actualQuantity\": \"0\",\n  \"date\": \"/Date(946684800000)/\",\n  \"externalCode\": \"REPLACE_ME\"\
+        \n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/AccrualCalculationBase({{ _.key_AccrualCalculationBase }})'
+    method: MERGE
+    meta:
+      id: req_623422e9ba583e39dcae62e6927f403a
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_AccrualCalculationBase.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"actualQuantity\": \"0\",\n  \"date\": \"/Date(946684800000)/\"\
+        \n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_7ab2fd341f1d8831c18fa192bd6f1f07
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_AccrualCalculationBase.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id004
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"AccrualCalculationBase\"\n    },\n    \"externalCode\"\
+        : \"REPLACE_ME\",\n    \"actualQuantity\": \"0\",\n    \"date\": \"/Date(946684800000)/\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/AccrualCalculationBase({{ _.key_AccrualCalculationBase }})'
+    method: DELETE
+    meta:
+      id: req_bb7cbab22a028f7297acb514b3fad576
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_AccrualCalculationBase. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTime
+  meta:
+    id: fld_7cbd70caf60123c09399a1acf46c5004
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTime'
+    method: POST
+    meta:
+      id: req_edc422676815c9205a6bd635135891d0
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_EmployeeTime.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id005
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"endDate\": \"/Date(946684800000)/\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\":\
+        \ \"/Date(946684800000)/\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTime({{ _.key_EmployeeTime }})'
+    method: MERGE
+    meta:
+      id: req_5ebf4d60301ae5e3b786a5d4e7565b10
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_EmployeeTime.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"endDate\": \"/Date(946684800000)/\",\n  \"startDate\":\
+        \ \"/Date(946684800000)/\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_8844e103f770ab15ba34a4cc2a54bf13
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_EmployeeTime.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id005
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTime\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
+        ,\n    \"endDate\": \"/Date(946684800000)/\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTime({{ _.key_EmployeeTime }})'
+    method: DELETE
+    meta:
+      id: req_8a178702d6e58acf9029ccf5ffa997bc
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_EmployeeTime. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimeAUS
+  meta:
+    id: fld_e8adbbaad9ef68349caab9c698d09a9e
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeAUS'
+    method: POST
+    meta:
+      id: req_2ef1fb9ad36e0f43a9330350a1a4969a
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeAUS. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id006
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeAUS({{ _.key_EmployeeTimeAUS }})'
+    method: MERGE
+    meta:
+      id: req_5e7ea0f435f1c9b060dd07a1486102d3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeAUS. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_2b7305fc2dea2f58e676b5de9345c58c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeAUS. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id006
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimeAUS\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeAUS({{ _.key_EmployeeTimeAUS }})'
+    method: DELETE
+    meta:
+      id: req_0b68533c262534d8f6291a078b221c19
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimeAUS. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimeCAN
+  meta:
+    id: fld_b50465ccf8e73fb793bb5a4cc641e8f2
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeCAN'
+    method: POST
+    meta:
+      id: req_4910e5a71669ba4b683bfcecf1d97cfa
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeCAN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id007
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeCAN({{ _.key_EmployeeTimeCAN }})'
+    method: MERGE
+    meta:
+      id: req_5c203f62fb9b22ccab39df7d9338a061
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeCAN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id007
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_5a389254579d9af34115811c6bcb6722
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeCAN. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id007
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimeCAN\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeCAN({{ _.key_EmployeeTimeCAN }})'
+    method: DELETE
+    meta:
+      id: req_1e7e3923da98cfd387aeb36867690953
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimeCAN. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimeCOL
+  meta:
+    id: fld_1110962d7152077ff4ed02875f4e6084
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeCOL'
+    method: POST
+    meta:
+      id: req_6bed6e7b3989044ee8ecc45f073f071d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeCOL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id008
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeCOL({{ _.key_EmployeeTimeCOL }})'
+    method: MERGE
+    meta:
+      id: req_7a0a479a8e1134637a730a3147672359
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeCOL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id008
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_3a6866b5d992fd02af85c5394a46c671
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeCOL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id008
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimeCOL\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeCOL({{ _.key_EmployeeTimeCOL }})'
+    method: DELETE
+    meta:
+      id: req_8656b8795968ab50d956c7995b316812
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimeCOL. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimeDEU
+  meta:
+    id: fld_796eeab3c3946d14b05dd52c8434638e
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeDEU'
+    method: POST
+    meta:
+      id: req_4647f14512b28d055febf8e458f6adc1
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeDEU. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id009
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeDEU({{ _.key_EmployeeTimeDEU }})'
+    method: MERGE
+    meta:
+      id: req_be39b3b1b5c7b43e6becc261e445ddd3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeDEU. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id009
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_3689b534f70d0b174709d7641ed31446
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeDEU. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id009
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimeDEU\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeDEU({{ _.key_EmployeeTimeDEU }})'
+    method: DELETE
+    meta:
+      id: req_b53c43b687c0f736579d9eb819135376
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimeDEU. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimeESP
+  meta:
+    id: fld_ed330f46a9461f0480715a27d61f244a
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeESP'
+    method: POST
+    meta:
+      id: req_b11fa03bf7ae6d6ca98c788440af95bb
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeESP. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id010
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeESP({{ _.key_EmployeeTimeESP }})'
+    method: MERGE
+    meta:
+      id: req_669be002d8e6242515ec00f4de369b0e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeESP. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id010
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_05f20dea8a9dec91fb5539f6d4b082e4
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeESP. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id010
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimeESP\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeESP({{ _.key_EmployeeTimeESP }})'
+    method: DELETE
+    meta:
+      id: req_6bd0daa7a20325f4c1dfe5cc76940477
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimeESP. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimeITA
+  meta:
+    id: fld_0995526677c2c0ea699ee2f767b7813f
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeITA'
+    method: POST
+    meta:
+      id: req_3e6246fbedd12b6e83571600c6f7246b
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeITA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id011
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeITA({{ _.key_EmployeeTimeITA }})'
+    method: MERGE
+    meta:
+      id: req_84836e959a10d0af68978a883933ddca
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeITA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id011
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_ed8eaa7c2040fcc365c11255cffdf91f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeITA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id011
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimeITA\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeITA({{ _.key_EmployeeTimeITA }})'
+    method: DELETE
+    meta:
+      id: req_8aff194db3bd780823800101b18dde66
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimeITA. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimeMEX
+  meta:
+    id: fld_d33d34a5767ce30348ad65736bef019f
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeMEX'
+    method: POST
+    meta:
+      id: req_949c72a45ac3527993693154b826edc4
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeMEX. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id012
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeMEX({{ _.key_EmployeeTimeMEX }})'
+    method: MERGE
+    meta:
+      id: req_f9b50a58a4904d8c8bdada6321abeee0
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeMEX. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id012
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_bde2688b8bf54be9a4ec1e2fa8f2c7d3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeMEX. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id012
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimeMEX\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeMEX({{ _.key_EmployeeTimeMEX }})'
+    method: DELETE
+    meta:
+      id: req_0f4555f3f0381ccbc6715bd181de7881
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimeMEX. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimeNLD
+  meta:
+    id: fld_6d1c504dd9ac36d641b21e172d2e8585
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeNLD'
+    method: POST
+    meta:
+      id: req_a37a00a24aaa4d21c41962d39d536e9e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeNLD. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id013
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeNLD({{ _.key_EmployeeTimeNLD }})'
+    method: MERGE
+    meta:
+      id: req_091aa0e7ac11ec17a42ad380c7bd9853
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeNLD. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id013
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_9ce57d7b5a259e2407e171641358d24f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeNLD. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id013
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimeNLD\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeNLD({{ _.key_EmployeeTimeNLD }})'
+    method: DELETE
+    meta:
+      id: req_d6d799a0438b1946aca7c7fa21ddf6b5
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimeNLD. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimeNOR
+  meta:
+    id: fld_74c5220139b6e49940ebeb95f278958c
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeNOR'
+    method: POST
+    meta:
+      id: req_ad871009687ea49cdf37b87a507671ee
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeNOR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id014
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeNOR({{ _.key_EmployeeTimeNOR }})'
+    method: MERGE
+    meta:
+      id: req_2873d7ca29af2f02e7e70b3192957caf
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeNOR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id014
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_62c2a1b1993f0dd7921cae04a15b0445
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeNOR. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id014
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimeNOR\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeNOR({{ _.key_EmployeeTimeNOR }})'
+    method: DELETE
+    meta:
+      id: req_0c10a627eed3b822bb9f6f16cae10ad0
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimeNOR. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimePOL
+  meta:
+    id: fld_17383ee37474b069f757e25cd25d4ed6
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimePOL'
+    method: POST
+    meta:
+      id: req_26a24781d006918bf99650de758df43c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimePOL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id015
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimePOL({{ _.key_EmployeeTimePOL }})'
+    method: MERGE
+    meta:
+      id: req_b4b9ddf8a8e408656e3fb8cf0ad03889
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimePOL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id015
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_4a3f5093346da3b6be5fc40588d4f166
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimePOL. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id015
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimePOL\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimePOL({{ _.key_EmployeeTimePOL }})'
+    method: DELETE
+    meta:
+      id: req_e8b6fbf32e72b08cc1b9e15954b1e68f
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimePOL. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimeSWE
+  meta:
+    id: fld_4461d58aec7f9d7e5cb7ce18225cf34f
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeSWE'
+    method: POST
+    meta:
+      id: req_98b23fe1d8946f19cb81ac2bd46553cd
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeSWE. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id016
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeSWE({{ _.key_EmployeeTimeSWE }})'
+    method: MERGE
+    meta:
+      id: req_76056f1ec16ed2beb70dc9db0c0d4b0e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeSWE. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id016
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_f5a35561d3fda2b06125796d634e29c7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeSWE. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id016
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimeSWE\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeSWE({{ _.key_EmployeeTimeSWE }})'
+    method: DELETE
+    meta:
+      id: req_cee18314782a3623c9406a54da5c3f5c
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimeSWE. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: EmployeeTimeUSA
+  meta:
+    id: fld_4de9092999d6116609889b02d0bac27d
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeUSA'
+    method: POST
+    meta:
+      id: req_d251edad92efc7f8ad144302ca50c812
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeUSA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id017
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeUSA({{ _.key_EmployeeTimeUSA }})'
+    method: MERGE
+    meta:
+      id: req_6f8a2cd26ad5d44745d785cbf9d209d1
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeUSA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id017
+    body:
+      mimeType: application/json
+      text: "{\n  \"EmployeeTime_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"0\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_225834d5ef07be0e36e84072892e9132
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: EmployeeTime_externalCode (Edm.String), externalCode (Edm.Int64). Execute Listar para
+        preencher automaticamente key_EmployeeTimeUSA. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id017
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"EmployeeTimeUSA\"\n    },\n    \"EmployeeTime_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/EmployeeTimeUSA({{ _.key_EmployeeTimeUSA }})'
+    method: DELETE
+    meta:
+      id: req_9929aa2c62fc6e9d88d2d17a1c8737c0
+      description: 'Exclui o registro identificado pela chave. Chaves: EmployeeTime_externalCode (Edm.String), externalCode
+        (Edm.Int64). Execute Listar para preencher automaticamente key_EmployeeTimeUSA. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: ExternalTimeData
+  meta:
+    id: fld_0bf1cd7b51ef3e807590dbab12608a95
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/ExternalTimeData'
+    method: POST
+    meta:
+      id: req_f22c1bd79e7e1ad6082acf371e2ac4ba
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_ExternalTimeData.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id018
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\": \"/Date(946684800000)/\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/ExternalTimeData({{ _.key_ExternalTimeData }})'
+    method: MERGE
+    meta:
+      id: req_a2815cdb10b125657647c34278ea4cdc
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_ExternalTimeData.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id018
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\": \"/Date(946684800000)/\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_47f174ac1eccfc357142112ed0f950ce
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_ExternalTimeData.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id018
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"ExternalTimeData\"\n    },\n    \"externalCode\": \"\
+        REPLACE_ME\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/ExternalTimeData({{ _.key_ExternalTimeData }})'
+    method: DELETE
+    meta:
+      id: req_e78ddf1e479a712c66b4595c5ff8c9b8
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_ExternalTimeData. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: ExternalTimeRecord
+  meta:
+    id: fld_4b85671df5dc3b02b51b89a09f3f306d
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/ExternalTimeRecord'
+    method: POST
+    meta:
+      id: req_7128130695bcc6c0f21f202bc572a8a4
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_ExternalTimeRecord.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id019
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"date\": \"/Date(946684800000)/\",\n  \"externalCode\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/ExternalTimeRecord({{ _.key_ExternalTimeRecord }})'
+    method: MERGE
+    meta:
+      id: req_9a7f69fd910c938e5d054a4bc1832267
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_ExternalTimeRecord.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id019
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"date\": \"/Date(946684800000)/\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_eb1afb101d0aa46b8ea4064a7365b395
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_ExternalTimeRecord.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id019
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"ExternalTimeRecord\"\n    },\n    \"externalCode\"\
+        : \"REPLACE_ME\",\n    \"date\": \"/Date(946684800000)/\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/ExternalTimeRecord({{ _.key_ExternalTimeRecord }})'
+    method: DELETE
+    meta:
+      id: req_6f0554d65d83fd7dc6aed42ae75f578b
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_ExternalTimeRecord. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: TemporaryTimeInformation
+  meta:
+    id: fld_13ca4168e526df70299993371ba275ea
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/TemporaryTimeInformation'
+    method: POST
+    meta:
+      id: req_9ab0f6ad0c5cca77dd141d52696edb0d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_TemporaryTimeInformation.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id020
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"endDate\": \"/Date(946684800000)/\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\":\
+        \ \"/Date(946684800000)/\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/TemporaryTimeInformation({{ _.key_TemporaryTimeInformation }})'
+    method: MERGE
+    meta:
+      id: req_2ed13e828a591a2364a13333143ba588
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_TemporaryTimeInformation.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id020
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"endDate\": \"/Date(946684800000)/\",\n  \"startDate\":\
+        \ \"/Date(946684800000)/\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_2918cc86333ff119a71175a2df578e34
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_TemporaryTimeInformation.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id020
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"TemporaryTimeInformation\"\n    },\n    \"externalCode\"\
+        : \"REPLACE_ME\",\n    \"endDate\": \"/Date(946684800000)/\",\n    \"startDate\": \"/Date(946684800000)/\"\
+        \n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/TemporaryTimeInformation({{ _.key_TemporaryTimeInformation }})'
+    method: DELETE
+    meta:
+      id: req_a2792e562750f3b38b205cd91e567b64
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_TemporaryTimeInformation. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: TimeAccount
+  meta:
+    id: fld_b0df8018117923d5468801bd0022cbf7
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/TimeAccount'
+    method: POST
+    meta:
+      id: req_a8c035d4571febb9a2768b6e05862f15
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_TimeAccount.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id021
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"bookingEndDate\": \"/Date(946684800000)/\",\n  \"bookingStartDate\": \"/Date(946684800000)/\"\
+        ,\n  \"endDate\": \"/Date(946684800000)/\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"startDate\": \"/Date(946684800000)/\"\
+        \n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/TimeAccount({{ _.key_TimeAccount }})'
+    method: MERGE
+    meta:
+      id: req_99189949784a7325c3fc0fc3217c0427
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_TimeAccount.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id021
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"bookingEndDate\": \"/Date(946684800000)/\",\n  \"bookingStartDate\"\
+        : \"/Date(946684800000)/\",\n  \"endDate\": \"/Date(946684800000)/\",\n  \"startDate\": \"/Date(946684800000)/\"\
+        \n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_e4eb03f28326eab92ae2e8a5130ae998
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_TimeAccount.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id021
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"TimeAccount\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
+        ,\n    \"bookingEndDate\": \"/Date(946684800000)/\",\n    \"bookingStartDate\": \"/Date(946684800000)/\"\
+        ,\n    \"endDate\": \"/Date(946684800000)/\",\n    \"startDate\": \"/Date(946684800000)/\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/TimeAccount({{ _.key_TimeAccount }})'
+    method: DELETE
+    meta:
+      id: req_ead2550b236401aa14255d2291ea95aa
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_TimeAccount. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: TimeAccountDetail
+  meta:
+    id: fld_c48dc9862b8e7b83babc5503918771f2
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/TimeAccountDetail'
+    method: POST
+    meta:
+      id: req_bf82f99e221c9ddb71cb06ffc5102c06
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: TimeAccount_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_TimeAccountDetail. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id022
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"TimeAccount_externalCode\": \"REPLACE_ME\",\n  \"bookingAmount\": \"0\",\n  \"bookingDate\"\
+        : \"/Date(946684800000)/\",\n  \"bookingType\": \"REPLACE_ME\",\n  \"bookingUnit\": \"REPLACE_ME\",\n  \"\
+        externalCode\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/TimeAccountDetail({{ _.key_TimeAccountDetail }})'
+    method: MERGE
+    meta:
+      id: req_0ff0277b333a84992ac02274b72c87c5
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: TimeAccount_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_TimeAccountDetail. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id022
+    body:
+      mimeType: application/json
+      text: "{\n  \"TimeAccount_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"bookingAmount\"\
+        : \"0\",\n  \"bookingDate\": \"/Date(946684800000)/\",\n  \"bookingType\": \"REPLACE_ME\",\n  \"bookingUnit\"\
+        : \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_42621b7a394f19381f8d41e0c42b19b3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: TimeAccount_externalCode (Edm.String), externalCode (Edm.String). Execute Listar para
+        preencher automaticamente key_TimeAccountDetail. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id022
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"TimeAccountDetail\"\n    },\n    \"TimeAccount_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"REPLACE_ME\",\n    \"bookingAmount\": \"0\",\n    \"bookingDate\"\
+        : \"/Date(946684800000)/\",\n    \"bookingType\": \"REPLACE_ME\",\n    \"bookingUnit\": \"REPLACE_ME\"\n\
+        \  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/TimeAccountDetail({{ _.key_TimeAccountDetail }})'
+    method: DELETE
+    meta:
+      id: req_eabb7d3f2f953c8fd2e3f83332a2f20f
+      description: 'Exclui o registro identificado pela chave. Chaves: TimeAccount_externalCode (Edm.String), externalCode
+        (Edm.String). Execute Listar para preencher automaticamente key_TimeAccountDetail. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: TimeAccountPayout
+  meta:
+    id: fld_5bf464f45526e07bd45d2b89e407f204
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/TimeAccountPayout'
+    method: POST
+    meta:
+      id: req_32c4d0731339f9c82a01f0231450a32d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_TimeAccountPayout.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id023
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"accrualSeparated\": false,\n  \"externalCode\": \"REPLACE_ME\",\n  \"payoutScenario\": \"REPLACE_ME\"\
+        ,\n  \"postingDate\": \"/Date(946684800000)/\",\n  \"quantity\": \"0\",\n  \"rateCategory\": \"REPLACE_ME\"\
+        ,\n  \"unit\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/TimeAccountPayout({{ _.key_TimeAccountPayout }})'
+    method: MERGE
+    meta:
+      id: req_24393840786a7db1678ab060b305269c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_TimeAccountPayout.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id023
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"accrualSeparated\": false,\n  \"payoutScenario\": \"REPLACE_ME\"\
+        ,\n  \"postingDate\": \"/Date(946684800000)/\",\n  \"quantity\": \"0\",\n  \"rateCategory\": \"REPLACE_ME\"\
+        ,\n  \"unit\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_a86dd43812a11b88573511e3f0adbe09
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_TimeAccountPayout.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id023
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"TimeAccountPayout\"\n    },\n    \"externalCode\":\
+        \ \"REPLACE_ME\",\n    \"accrualSeparated\": false,\n    \"payoutScenario\": \"REPLACE_ME\",\n    \"postingDate\"\
+        : \"/Date(946684800000)/\",\n    \"quantity\": \"0\",\n    \"rateCategory\": \"REPLACE_ME\",\n    \"unit\"\
+        : \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/TimeAccountPayout({{ _.key_TimeAccountPayout }})'
+    method: DELETE
+    meta:
+      id: req_0b21d6492de066eb637810e74abf15c9
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_TimeAccountPayout. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: TimeZone
+  meta:
+    id: fld_ee01857b419f7ee4b6c181aa98f4d193
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/TimeZone'
+    method: POST
+    meta:
+      id: req_bd563e3d2bcc2f20b667d1cab42990cd
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), externalCode (Edm.String). Execute Listar para preencher
+        automaticamente key_TimeZone. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id024
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"effectiveStatus\": \"REPLACE_ME\",\n  \"\
+        externalCode\": \"REPLACE_ME\",\n  \"utcDstOffset\": \"REPLACE_ME\",\n  \"utcOffset\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/TimeZone({{ _.key_TimeZone }})'
+    method: MERGE
+    meta:
+      id: req_fdf41f39908c2d082ed8d3f272d37ea6
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), externalCode (Edm.String). Execute Listar para preencher
+        automaticamente key_TimeZone. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id024
+    body:
+      mimeType: application/json
+      text: "{\n  \"effectiveStartDate\": \"/Date(946684800000)/\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"effectiveStatus\"\
+        : \"REPLACE_ME\",\n  \"utcDstOffset\": \"REPLACE_ME\",\n  \"utcOffset\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_2a31119bdfee30d74745b5698505e349
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: effectiveStartDate (Edm.DateTime), externalCode (Edm.String). Execute Listar para preencher
+        automaticamente key_TimeZone. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id024
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"TimeZone\"\n    },\n    \"effectiveStartDate\": \"\
+        /Date(946684800000)/\",\n    \"externalCode\": \"REPLACE_ME\",\n    \"effectiveStatus\": \"REPLACE_ME\"\
+        ,\n    \"utcDstOffset\": \"REPLACE_ME\",\n    \"utcOffset\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/TimeZone({{ _.key_TimeZone }})'
+    method: DELETE
+    meta:
+      id: req_2fbc741ecec387d4c49166bf995cad2d
+      description: 'Exclui o registro identificado pela chave. Chaves: effectiveStartDate (Edm.DateTime), externalCode
+        (Edm.String). Execute Listar para preencher automaticamente key_TimeZone. Campos e permissoes podem variar
+        por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: WorkSchedule
+  meta:
+    id: fld_b5db479a046ef34f4215bc884d6e4cde
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/WorkSchedule'
+    method: POST
+    meta:
+      id: req_80891706320f26e2f0026f89fd83ccf7
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_WorkSchedule.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id025
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"crossMidnightAllowed\": false,\n  \"externalCode\": \"REPLACE_ME\",\n  \"individualWorkSchedule\"\
+        : false,\n  \"modelCategory\": \"REPLACE_ME\",\n  \"startingDate\": \"/Date(946684800000)/\",\n  \"timeRecordingVariant\"\
+        : \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/WorkSchedule({{ _.key_WorkSchedule }})'
+    method: MERGE
+    meta:
+      id: req_f8ac188fa4051ca5e55f041fe104c946
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_WorkSchedule.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id025
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"crossMidnightAllowed\": false,\n  \"individualWorkSchedule\"\
+        : false,\n  \"modelCategory\": \"REPLACE_ME\",\n  \"startingDate\": \"/Date(946684800000)/\",\n  \"timeRecordingVariant\"\
+        : \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_a7e597c03941223bdda73e94ee0ac55f
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_WorkSchedule.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id025
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"WorkSchedule\"\n    },\n    \"externalCode\": \"REPLACE_ME\"\
+        ,\n    \"crossMidnightAllowed\": false,\n    \"individualWorkSchedule\": false,\n    \"modelCategory\":\
+        \ \"REPLACE_ME\",\n    \"startingDate\": \"/Date(946684800000)/\",\n    \"timeRecordingVariant\": \"REPLACE_ME\"\
+        \n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/WorkSchedule({{ _.key_WorkSchedule }})'
+    method: DELETE
+    meta:
+      id: req_c3aaf82c17144c2aa7d4bacda87c20e7
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_WorkSchedule. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: WorkScheduleDay
+  meta:
+    id: fld_c71337b64108e408f3408d267dd0c9a3
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDay'
+    method: POST
+    meta:
+      id: req_381ce1156da7e2a84c986a1421ac2a8c
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: WorkSchedule_externalCode (Edm.String), day (Edm.Int64). Execute Listar para preencher
+        automaticamente key_WorkScheduleDay. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id026
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"WorkSchedule_externalCode\": \"REPLACE_ME\",\n  \"day\": \"0\",\n  \"workingHours\": \"0\"\n\
+        }"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDay({{ _.key_WorkScheduleDay }})'
+    method: MERGE
+    meta:
+      id: req_032d972f01e53fbc3a8d91437303dddb
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: WorkSchedule_externalCode (Edm.String), day (Edm.Int64). Execute Listar para preencher
+        automaticamente key_WorkScheduleDay. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id026
+    body:
+      mimeType: application/json
+      text: "{\n  \"WorkSchedule_externalCode\": \"REPLACE_ME\",\n  \"day\": \"0\",\n  \"workingHours\": \"0\"\n\
+        }"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_5c62db5071da23e739a1a346bf3f5a6d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: WorkSchedule_externalCode (Edm.String), day (Edm.Int64). Execute Listar para preencher
+        automaticamente key_WorkScheduleDay. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id026
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"WorkScheduleDay\"\n    },\n    \"WorkSchedule_externalCode\"\
+        : \"REPLACE_ME\",\n    \"day\": \"0\",\n    \"workingHours\": \"0\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDay({{ _.key_WorkScheduleDay }})'
+    method: DELETE
+    meta:
+      id: req_c03130451ca104d71b580ead2e1e522a
+      description: 'Exclui o registro identificado pela chave. Chaves: WorkSchedule_externalCode (Edm.String), day
+        (Edm.Int64). Execute Listar para preencher automaticamente key_WorkScheduleDay. Campos e permissoes podem
+        variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: WorkScheduleDayModel
+  meta:
+    id: fld_82148b04599d03a1fe3dbe31abc3caf9
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDayModel'
+    method: POST
+    meta:
+      id: req_e5e6deccd54a700c74e7f232707126cb
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_WorkScheduleDayModel.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id027
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"timeRecordingVariant\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDayModel({{ _.key_WorkScheduleDayModel }})'
+    method: MERGE
+    meta:
+      id: req_afe8f8ab451c525d5ce5d25316d4eb2d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_WorkScheduleDayModel.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id027
+    body:
+      mimeType: application/json
+      text: "{\n  \"externalCode\": \"REPLACE_ME\",\n  \"timeRecordingVariant\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_ce935205e8efd7cca25f81209df30693
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: externalCode (Edm.String). Execute Listar para preencher automaticamente key_WorkScheduleDayModel.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id027
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"WorkScheduleDayModel\"\n    },\n    \"externalCode\"\
+        : \"REPLACE_ME\",\n    \"timeRecordingVariant\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDayModel({{ _.key_WorkScheduleDayModel }})'
+    method: DELETE
+    meta:
+      id: req_ab9db019d8777955635cf47e279db902
+      description: 'Exclui o registro identificado pela chave. Chaves: externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_WorkScheduleDayModel. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: WorkScheduleDayModelAssignment
+  meta:
+    id: fld_d4f27bd2038f1fac6773dfd427861207
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDayModelAssignment'
+    method: POST
+    meta:
+      id: req_a0d2a1cbb78ebd01caf4e62b60e9cb35
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: WorkSchedule_externalCode (Edm.String), day (Edm.Int64). Execute Listar para preencher
+        automaticamente key_WorkScheduleDayModelAssignment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id028
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"WorkSchedule_externalCode\": \"REPLACE_ME\",\n  \"category\": \"REPLACE_ME\",\n  \"day\": \"\
+        0\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDayModelAssignment({{ _.key_WorkScheduleDayModelAssignment }})'
+    method: MERGE
+    meta:
+      id: req_3b814d3fa6a42b89fcd2a0f4ea39627e
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: WorkSchedule_externalCode (Edm.String), day (Edm.Int64). Execute Listar para preencher
+        automaticamente key_WorkScheduleDayModelAssignment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id028
+    body:
+      mimeType: application/json
+      text: "{\n  \"WorkSchedule_externalCode\": \"REPLACE_ME\",\n  \"day\": \"0\",\n  \"category\": \"REPLACE_ME\"\
+        \n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_ca1d7f04da1b23985f55fb0ac11893f3
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: WorkSchedule_externalCode (Edm.String), day (Edm.Int64). Execute Listar para preencher
+        automaticamente key_WorkScheduleDayModelAssignment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id028
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"WorkScheduleDayModelAssignment\"\n    },\n    \"WorkSchedule_externalCode\"\
+        : \"REPLACE_ME\",\n    \"day\": \"0\",\n    \"category\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDayModelAssignment({{ _.key_WorkScheduleDayModelAssignment }})'
+    method: DELETE
+    meta:
+      id: req_690be8407f8092a8821bbf75a1a6c10b
+      description: 'Exclui o registro identificado pela chave. Chaves: WorkSchedule_externalCode (Edm.String), day
+        (Edm.Int64). Execute Listar para preencher automaticamente key_WorkScheduleDayModelAssignment. Campos e
+        permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+- name: WorkScheduleDayModelSegment
+  meta:
+    id: fld_63f852ad1580a7dd347bcac08686576c
+    description: ''
+  children:
+  - name: Criar
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDayModelSegment'
+    method: POST
+    meta:
+      id: req_e9139b20d5bacdae47ec399233557b5d
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: WorkScheduleDayModel_externalCode (Edm.String), externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_WorkScheduleDayModelSegment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: &id029
+    - name: $format
+      value: json
+      disabled: false
+    body:
+      mimeType: application/json
+      text: "{\n  \"WorkScheduleDayModel_externalCode\": \"REPLACE_ME\",\n  \"category\": \"REPLACE_ME\",\n  \"\
+        endTime\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n  \"startTime\": \"REPLACE_ME\"\n}"
+  - name: Atualizar
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDayModelSegment({{ _.key_WorkScheduleDayModelSegment }})'
+    method: MERGE
+    meta:
+      id: req_2187afaeb0c8a2db07063a7766093f6a
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: WorkScheduleDayModel_externalCode (Edm.String), externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_WorkScheduleDayModelSegment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id029
+    body:
+      mimeType: application/json
+      text: "{\n  \"WorkScheduleDayModel_externalCode\": \"REPLACE_ME\",\n  \"externalCode\": \"REPLACE_ME\",\n\
+        \  \"category\": \"REPLACE_ME\",\n  \"endTime\": \"REPLACE_ME\",\n  \"startTime\": \"REPLACE_ME\"\n}"
+  - name: Upsert
+    url: '{{ _.base_url }}/odata/v2/upsert'
+    method: POST
+    meta:
+      id: req_a17e4a545f79d40dbfcc23b455c85d37
+      description: 'MODELO DE ESCRITA. Revise chaves, campos obrigatorios e regras do tenant. Valores sao exemplos
+        ficticios. Chaves: WorkScheduleDayModel_externalCode (Edm.String), externalCode (Edm.String). Execute Listar
+        para preencher automaticamente key_WorkScheduleDayModelSegment. Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+    parameters: *id029
+    body:
+      mimeType: application/json
+      text: "[\n  {\n    \"__metadata\": {\n      \"uri\": \"WorkScheduleDayModelSegment\"\n    },\n    \"WorkScheduleDayModel_externalCode\"\
+        : \"REPLACE_ME\",\n    \"externalCode\": \"REPLACE_ME\",\n    \"category\": \"REPLACE_ME\",\n    \"endTime\"\
+        : \"REPLACE_ME\",\n    \"startTime\": \"REPLACE_ME\"\n  }\n]"
+  - name: Excluir
+    url: '{{ _.base_url }}/odata/v2/WorkScheduleDayModelSegment({{ _.key_WorkScheduleDayModelSegment }})'
+    method: DELETE
+    meta:
+      id: req_b462b694fd713009b3d8e45d94c0d949
+      description: 'Exclui o registro identificado pela chave. Chaves: WorkScheduleDayModel_externalCode (Edm.String),
+        externalCode (Edm.String). Execute Listar para preencher automaticamente key_WorkScheduleDayModelSegment.
+        Campos e permissoes podem variar por tenant.'
+    authentication:
+      type: bearer
+      token: '{{ _.access_token }}'
+      prefix: Bearer
+    headers:
+    - name: Accept
+      value: application/json
+    parameters: []
+environments:
+  name: Base Environment
+  meta:
+    id: env_2d9e4d03f703654e4933a2c1d821f0d3
+  data:
+    next_page_url: ''
+    key_AccrualCalculationBase: externalCode='REPLACE_ME'
+    key_EmployeeTime: externalCode='REPLACE_ME'
+    key_EmployeeTimeAUS: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_EmployeeTimeCAN: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_EmployeeTimeCOL: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_EmployeeTimeDEU: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_EmployeeTimeESP: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_EmployeeTimeITA: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_EmployeeTimeMEX: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_EmployeeTimeNLD: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_EmployeeTimeNOR: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_EmployeeTimePOL: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_EmployeeTimeSWE: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_EmployeeTimeUSA: EmployeeTime_externalCode='REPLACE_ME',externalCode=0L
+    key_ExternalTimeData: externalCode='REPLACE_ME'
+    key_ExternalTimeRecord: externalCode='REPLACE_ME'
+    key_TemporaryTimeInformation: externalCode='REPLACE_ME'
+    key_TimeAccount: externalCode='REPLACE_ME'
+    key_TimeAccountDetail: TimeAccount_externalCode='REPLACE_ME',externalCode='REPLACE_ME'
+    key_TimeAccountPayout: externalCode='REPLACE_ME'
+    key_TimeZone: effectiveStartDate=datetime'2000-01-01T00:00:00',externalCode='REPLACE_ME'
+    key_WorkSchedule: externalCode='REPLACE_ME'
+    key_WorkScheduleDay: WorkSchedule_externalCode='REPLACE_ME',day=0L
+    key_WorkScheduleDayModel: externalCode='REPLACE_ME'
+    key_WorkScheduleDayModelAssignment: WorkSchedule_externalCode='REPLACE_ME',day=0L
+    key_WorkScheduleDayModelSegment: WorkScheduleDayModel_externalCode='REPLACE_ME',externalCode='REPLACE_ME'

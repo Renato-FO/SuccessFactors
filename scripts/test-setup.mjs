@@ -64,7 +64,8 @@ test('imports region-independent service keys and stores only in the active scop
   for(const scope of ['collection','global']){
     const ctx=mock({setup_scope:scope,destination_service_key:JSON.stringify({credentials:{url:'https://auth.eu.example.com',uri:'https://dest.eu.example.com',clientid:'generic-client',clientsecret:'generic-secret'}})},request=>{
       assert.equal(request.url,'https://auth.eu.example.com/oauth/token');
-      assert.equal(request.auth.type,'basic');
+      assert.equal(request.auth,undefined);
+      assert.equal(request.header.Authorization,'Basic '+Buffer.from('generic-client:generic-secret').toString('base64'));
       assert.equal(request.body.urlencoded[0].value,'client_credentials');
       return {access_token:'example-btp-token',expires_in:3600};
     },scope==='global');

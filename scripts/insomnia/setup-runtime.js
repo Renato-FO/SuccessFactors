@@ -76,9 +76,9 @@ const SFSetup = (() => {
     const context = JSON.stringify([get(prefix + '_token_url'), get(prefix + '_client_id')]);
     if (!force && get(prefix + '_token_context') === context && fresh(get(tokenKey), get(expiresKey))) return get(tokenKey);
     const endpoint = base(required(prefix + '_token_url'));
+    const basic = require('buffer').Buffer.from(required(prefix + '_client_id') + ':' + required(prefix + '_client_secret'), 'utf8').toString('base64');
     const response = await send({url: endpoint, method: 'POST',
-      header: {'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json'},
-      auth: {type: 'basic', basic: [{key: 'username', value: required(prefix + '_client_id')}, {key: 'password', value: required(prefix + '_client_secret')}]},
+      header: {'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json', Authorization: 'Basic ' + basic},
       body: {mode: 'urlencoded', urlencoded: [{key: 'grant_type', value: 'client_credentials'}]}}, 'OAuth ' + prefix);
     if (!response.access_token) throw new Error('OAuth nao retornou access_token');
     const until = expiry(response.access_token, response.expires_in);

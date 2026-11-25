@@ -1296,31 +1296,31 @@ scripts:
     \    const expiresKey = prefix + '_token_expires_at';\n    const context = JSON.stringify([get(prefix + '_token_url'),\
     \ get(prefix + '_client_id')]);\n    if (!force && get(prefix + '_token_context') === context && fresh(get(tokenKey),\
     \ get(expiresKey))) return get(tokenKey);\n    const endpoint = base(required(prefix + '_token_url'));\n   \
-    \ const response = await send({url: endpoint, method: 'POST',\n      header: {'Content-Type': 'application/x-www-form-urlencoded',\
-    \ Accept: 'application/json'},\n      auth: {type: 'basic', basic: [{key: 'username', value: required(prefix\
-    \ + '_client_id')}, {key: 'password', value: required(prefix + '_client_secret')}]},\n      body: {mode: 'urlencoded',\
-    \ urlencoded: [{key: 'grant_type', value: 'client_credentials'}]}}, 'OAuth ' + prefix);\n    if (!response.access_token)\
-    \ throw new Error('OAuth nao retornou access_token');\n    const until = expiry(response.access_token, response.expires_in);\n\
-    \    if (until && until <= Date.now()) throw new Error('OAuth retornou token expirado');\n    put(tokenKey,\
-    \ response.access_token);\n    put(expiresKey, until);\n    put(prefix + '_token_context', context);\n    return\
-    \ response.access_token;\n  }\n  function destinationContext() { return JSON.stringify([get('destination_service_url'),\
-    \ get('destination_name'), get('btp_client_id'), get('destination_user_token') || '']); }\n  async function\
-    \ destinationHeaders() {\n    const headers = {Authorization: 'Bearer ' + await oauth('btp'), Accept: 'application/json'};\n\
-    \    if (get('destination_user_token')) headers['X-User-Token'] = get('destination_user_token');\n    return\
-    \ headers;\n  }\n  function applyDestination(data) {\n    const config = data.destinationConfiguration;\n  \
-    \  if (!config || !config.URL) throw new Error('Resposta sem destinationConfiguration.URL');\n    if (config.ProxyType\
-    \ && config.ProxyType !== 'Internet') throw new Error('Esta collection usa conexao direta Internet. OnPremise/PrivateLink\
-    \ exige proxy apropriado; configuracao nao foi aplicada.');\n    const type = config.Authentication || 'NoAuthentication';\n\
-    \    const selected = (data.authTokens || []).find(t => !t.error && (t.value || t.http_header && t.http_header.value));\n\
-    \    let authorization = '';\n    if (type !== 'NoAuthentication') {\n      if (!selected) throw new Error('Destination\
-    \ sem authToken utilizavel. Fluxos com usuario exigem destination_user_token e permissoes adequadas.');\n  \
-    \    const header = selected.http_header;\n      if (header && String(header.key).toLowerCase() === 'authorization')\
-    \ authorization = header.value;\n      else if (selected.type && selected.value) authorization = selected.type\
-    \ + ' ' + selected.value;\n      else throw new Error('Destination nao retornou um header Authorization utilizavel');\n\
-    \      if (!/^(Bearer|Basic)\\s+\\S+/i.test(authorization)) throw new Error('Tipo de autorizacao nao suportado\
-    \ pela collection');\n    }\n    const original = url(config.URL);\n    if (original.search) throw new Error('Destination\
-    \ URL com query string: use uma URL base de servico');\n    let endpoint = original.toString().replace(/\\/$/,\
-    \ '');\n    let apiPath = get('setup_api_path') || '/odata/v2';\n    const match = endpoint.match(/^(.*)(\\\
+    \ const basic = require('buffer').Buffer.from(required(prefix + '_client_id') + ':' + required(prefix + '_client_secret'),\
+    \ 'utf8').toString('base64');\n    const response = await send({url: endpoint, method: 'POST',\n      header:\
+    \ {'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json', Authorization: 'Basic '\
+    \ + basic},\n      body: {mode: 'urlencoded', urlencoded: [{key: 'grant_type', value: 'client_credentials'}]}},\
+    \ 'OAuth ' + prefix);\n    if (!response.access_token) throw new Error('OAuth nao retornou access_token');\n\
+    \    const until = expiry(response.access_token, response.expires_in);\n    if (until && until <= Date.now())\
+    \ throw new Error('OAuth retornou token expirado');\n    put(tokenKey, response.access_token);\n    put(expiresKey,\
+    \ until);\n    put(prefix + '_token_context', context);\n    return response.access_token;\n  }\n  function\
+    \ destinationContext() { return JSON.stringify([get('destination_service_url'), get('destination_name'), get('btp_client_id'),\
+    \ get('destination_user_token') || '']); }\n  async function destinationHeaders() {\n    const headers = {Authorization:\
+    \ 'Bearer ' + await oauth('btp'), Accept: 'application/json'};\n    if (get('destination_user_token')) headers['X-User-Token']\
+    \ = get('destination_user_token');\n    return headers;\n  }\n  function applyDestination(data) {\n    const\
+    \ config = data.destinationConfiguration;\n    if (!config || !config.URL) throw new Error('Resposta sem destinationConfiguration.URL');\n\
+    \    if (config.ProxyType && config.ProxyType !== 'Internet') throw new Error('Esta collection usa conexao direta\
+    \ Internet. OnPremise/PrivateLink exige proxy apropriado; configuracao nao foi aplicada.');\n    const type\
+    \ = config.Authentication || 'NoAuthentication';\n    const selected = (data.authTokens || []).find(t => !t.error\
+    \ && (t.value || t.http_header && t.http_header.value));\n    let authorization = '';\n    if (type !== 'NoAuthentication')\
+    \ {\n      if (!selected) throw new Error('Destination sem authToken utilizavel. Fluxos com usuario exigem destination_user_token\
+    \ e permissoes adequadas.');\n      const header = selected.http_header;\n      if (header && String(header.key).toLowerCase()\
+    \ === 'authorization') authorization = header.value;\n      else if (selected.type && selected.value) authorization\
+    \ = selected.type + ' ' + selected.value;\n      else throw new Error('Destination nao retornou um header Authorization\
+    \ utilizavel');\n      if (!/^(Bearer|Basic)\\s+\\S+/i.test(authorization)) throw new Error('Tipo de autorizacao\
+    \ nao suportado pela collection');\n    }\n    const original = url(config.URL);\n    if (original.search) throw\
+    \ new Error('Destination URL com query string: use uma URL base de servico');\n    let endpoint = original.toString().replace(/\\\
+    /$/, '');\n    let apiPath = get('setup_api_path') || '/odata/v2';\n    const match = endpoint.match(/^(.*)(\\\
     /odata\\/v[24](?:\\/.*)?)$/i);\n    if (match) { endpoint = match[1]; apiPath = match[2]; }\n    const until\
     \ = selected ? expiry(selected.value, selected.expires_in) : Date.now() + 3600000;\n    if (until && until <=\
     \ Date.now()) throw new Error('Destination retornou token expirado');\n    // Publish related state together\
@@ -1468,31 +1468,31 @@ scripts:
     \    const expiresKey = prefix + '_token_expires_at';\n    const context = JSON.stringify([get(prefix + '_token_url'),\
     \ get(prefix + '_client_id')]);\n    if (!force && get(prefix + '_token_context') === context && fresh(get(tokenKey),\
     \ get(expiresKey))) return get(tokenKey);\n    const endpoint = base(required(prefix + '_token_url'));\n   \
-    \ const response = await send({url: endpoint, method: 'POST',\n      header: {'Content-Type': 'application/x-www-form-urlencoded',\
-    \ Accept: 'application/json'},\n      auth: {type: 'basic', basic: [{key: 'username', value: required(prefix\
-    \ + '_client_id')}, {key: 'password', value: required(prefix + '_client_secret')}]},\n      body: {mode: 'urlencoded',\
-    \ urlencoded: [{key: 'grant_type', value: 'client_credentials'}]}}, 'OAuth ' + prefix);\n    if (!response.access_token)\
-    \ throw new Error('OAuth nao retornou access_token');\n    const until = expiry(response.access_token, response.expires_in);\n\
-    \    if (until && until <= Date.now()) throw new Error('OAuth retornou token expirado');\n    put(tokenKey,\
-    \ response.access_token);\n    put(expiresKey, until);\n    put(prefix + '_token_context', context);\n    return\
-    \ response.access_token;\n  }\n  function destinationContext() { return JSON.stringify([get('destination_service_url'),\
-    \ get('destination_name'), get('btp_client_id'), get('destination_user_token') || '']); }\n  async function\
-    \ destinationHeaders() {\n    const headers = {Authorization: 'Bearer ' + await oauth('btp'), Accept: 'application/json'};\n\
-    \    if (get('destination_user_token')) headers['X-User-Token'] = get('destination_user_token');\n    return\
-    \ headers;\n  }\n  function applyDestination(data) {\n    const config = data.destinationConfiguration;\n  \
-    \  if (!config || !config.URL) throw new Error('Resposta sem destinationConfiguration.URL');\n    if (config.ProxyType\
-    \ && config.ProxyType !== 'Internet') throw new Error('Esta collection usa conexao direta Internet. OnPremise/PrivateLink\
-    \ exige proxy apropriado; configuracao nao foi aplicada.');\n    const type = config.Authentication || 'NoAuthentication';\n\
-    \    const selected = (data.authTokens || []).find(t => !t.error && (t.value || t.http_header && t.http_header.value));\n\
-    \    let authorization = '';\n    if (type !== 'NoAuthentication') {\n      if (!selected) throw new Error('Destination\
-    \ sem authToken utilizavel. Fluxos com usuario exigem destination_user_token e permissoes adequadas.');\n  \
-    \    const header = selected.http_header;\n      if (header && String(header.key).toLowerCase() === 'authorization')\
-    \ authorization = header.value;\n      else if (selected.type && selected.value) authorization = selected.type\
-    \ + ' ' + selected.value;\n      else throw new Error('Destination nao retornou um header Authorization utilizavel');\n\
-    \      if (!/^(Bearer|Basic)\\s+\\S+/i.test(authorization)) throw new Error('Tipo de autorizacao nao suportado\
-    \ pela collection');\n    }\n    const original = url(config.URL);\n    if (original.search) throw new Error('Destination\
-    \ URL com query string: use uma URL base de servico');\n    let endpoint = original.toString().replace(/\\/$/,\
-    \ '');\n    let apiPath = get('setup_api_path') || '/odata/v2';\n    const match = endpoint.match(/^(.*)(\\\
+    \ const basic = require('buffer').Buffer.from(required(prefix + '_client_id') + ':' + required(prefix + '_client_secret'),\
+    \ 'utf8').toString('base64');\n    const response = await send({url: endpoint, method: 'POST',\n      header:\
+    \ {'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json', Authorization: 'Basic '\
+    \ + basic},\n      body: {mode: 'urlencoded', urlencoded: [{key: 'grant_type', value: 'client_credentials'}]}},\
+    \ 'OAuth ' + prefix);\n    if (!response.access_token) throw new Error('OAuth nao retornou access_token');\n\
+    \    const until = expiry(response.access_token, response.expires_in);\n    if (until && until <= Date.now())\
+    \ throw new Error('OAuth retornou token expirado');\n    put(tokenKey, response.access_token);\n    put(expiresKey,\
+    \ until);\n    put(prefix + '_token_context', context);\n    return response.access_token;\n  }\n  function\
+    \ destinationContext() { return JSON.stringify([get('destination_service_url'), get('destination_name'), get('btp_client_id'),\
+    \ get('destination_user_token') || '']); }\n  async function destinationHeaders() {\n    const headers = {Authorization:\
+    \ 'Bearer ' + await oauth('btp'), Accept: 'application/json'};\n    if (get('destination_user_token')) headers['X-User-Token']\
+    \ = get('destination_user_token');\n    return headers;\n  }\n  function applyDestination(data) {\n    const\
+    \ config = data.destinationConfiguration;\n    if (!config || !config.URL) throw new Error('Resposta sem destinationConfiguration.URL');\n\
+    \    if (config.ProxyType && config.ProxyType !== 'Internet') throw new Error('Esta collection usa conexao direta\
+    \ Internet. OnPremise/PrivateLink exige proxy apropriado; configuracao nao foi aplicada.');\n    const type\
+    \ = config.Authentication || 'NoAuthentication';\n    const selected = (data.authTokens || []).find(t => !t.error\
+    \ && (t.value || t.http_header && t.http_header.value));\n    let authorization = '';\n    if (type !== 'NoAuthentication')\
+    \ {\n      if (!selected) throw new Error('Destination sem authToken utilizavel. Fluxos com usuario exigem destination_user_token\
+    \ e permissoes adequadas.');\n      const header = selected.http_header;\n      if (header && String(header.key).toLowerCase()\
+    \ === 'authorization') authorization = header.value;\n      else if (selected.type && selected.value) authorization\
+    \ = selected.type + ' ' + selected.value;\n      else throw new Error('Destination nao retornou um header Authorization\
+    \ utilizavel');\n      if (!/^(Bearer|Basic)\\s+\\S+/i.test(authorization)) throw new Error('Tipo de autorizacao\
+    \ nao suportado pela collection');\n    }\n    const original = url(config.URL);\n    if (original.search) throw\
+    \ new Error('Destination URL com query string: use uma URL base de servico');\n    let endpoint = original.toString().replace(/\\\
+    /$/, '');\n    let apiPath = get('setup_api_path') || '/odata/v2';\n    const match = endpoint.match(/^(.*)(\\\
     /odata\\/v[24](?:\\/.*)?)$/i);\n    if (match) { endpoint = match[1]; apiPath = match[2]; }\n    const until\
     \ = selected ? expiry(selected.value, selected.expires_in) : Date.now() + 3600000;\n    if (until && until <=\
     \ Date.now()) throw new Error('Destination retornou token expirado');\n    // Publish related state together\
